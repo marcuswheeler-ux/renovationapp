@@ -203,6 +203,25 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
 .paid-Anthony{background:#fef9e7;color:#d68910}
 .del-btn{background:none;border:none;cursor:pointer;color:#ddd;font-size:15px;padding:2px 6px;border-radius:4px;transition:color .15s}
 .del-btn:hover{color:#e74c3c}
+.icon-btn{background:none;border:none;cursor:pointer;padding:3px 5px;border-radius:4px;font-size:14px;transition:all .15s;color:#ccc}
+.icon-btn:hover{background:#f0f0f0;color:#444}
+.icon-btn.has-receipt{color:#27ae60}
+.icon-btn.has-history{color:#9b59b6;font-size:11px;font-weight:800}
+/* Edit / History / Receipt modals */
+.emodal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:7000;backdrop-filter:blur(3px)}
+.emodal-bg.hidden{display:none}
+.emodal{background:white;border-radius:14px;padding:28px;max-width:560px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto}
+.emodal h3{font-size:17px;font-weight:800;color:#1e3a5f;margin-bottom:4px}
+.emodal-sub{font-size:12px;color:#aaa;margin-bottom:20px}
+.justify-label{font-size:11px;font-weight:800;text-transform:uppercase;color:#e67e22;letter-spacing:0.4px;margin-bottom:5px;display:block}
+.justify-field{width:100%;padding:10px 12px;border:2px solid #f39c12;border-radius:7px;font-size:13px;font-family:inherit;resize:vertical;min-height:70px;color:#333;transition:border-color .15s}
+.justify-field:focus{outline:none;border-color:#e67e22}
+.hist-entry{padding:10px 0;border-bottom:1px solid #f5f5f5}
+.hist-entry:last-child{border-bottom:none}
+.hist-who{font-weight:700;color:#1e3a5f;font-size:13px}
+.hist-change{color:#555;font-size:12px;margin-top:3px}
+.hist-just{background:#fff9e6;border-left:3px solid #f39c12;padding:5px 10px;margin-top:6px;border-radius:0 4px 4px 0;font-style:italic;color:#856404;font-size:12px}
+.receipt-img{max-width:100%;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);display:block}
 .spend-totals{background:#f8f9fb;border-radius:8px;padding:14px 16px;display:flex;gap:24px;flex-wrap:wrap;font-size:13px;border:1px solid #e8eaed;margin-bottom:16px}
 .st-item{display:flex;flex-direction:column;gap:2px}
 .st-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;color:#aaa}
@@ -370,6 +389,10 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
           <label class="flabel">Invoice / Ref #</label>
           <input class="finput" id="sp-ref" type="text" placeholder="Optional">
         </div>
+        <div class="fg">
+          <label class="flabel">Receipt (optional)</label>
+          <input class="finput" id="sp-receipt" type="file" accept="image/*" style="padding:6px 8px">
+        </div>
       </div>
       <div class="form-row">
         <button class="btn btn-green" onclick="addSpend()">+ Add Expense</button>
@@ -385,7 +408,7 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
               <th>#</th><th>Date</th><th>Category</th><th>Description</th>
               <th class="right">Cost</th><th class="right">10% Margin</th>
               <th class="right">Total</th><th>Paid By</th>
-              <th class="right">Balance Due</th><th>Ref #</th><th>By</th><th></th>
+              <th class="right">Balance Due</th><th>Ref #</th><th>By</th><th>Actions</th>
             </tr>
           </thead>
           <tbody id="spend-tbody"></tbody>
@@ -397,11 +420,58 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
 
 </div>
 
+<!-- EDIT EXPENSE MODAL -->
+<div class="emodal-bg hidden" id="edit-modal">
+  <div class="emodal">
+    <h3>✏️ Edit Expense</h3>
+    <input type="hidden" id="em-id">
+    <div class="emodal-sub" id="edit-modal-orig"></div>
+    <div class="form-grid" style="margin-bottom:16px">
+      <div class="fg"><label class="flabel">Category</label><select class="fselect" id="em-cat"></select></div>
+      <div class="fg"><label class="flabel">Description</label><input class="finput" id="em-desc" type="text"></div>
+      <div class="fg"><label class="flabel">Cost ($)</label><input class="finput" id="em-cost" type="number" step="0.01" min="0"></div>
+      <div class="fg"><label class="flabel">Paid By</label><select class="fselect" id="em-paid"><option>Marcus</option><option>Anthony</option></select></div>
+      <div class="fg"><label class="flabel">Date</label><input class="finput" id="em-date" type="date"></div>
+      <div class="fg"><label class="flabel">Ref #</label><input class="finput" id="em-ref" type="text"></div>
+      <div class="fg" style="grid-column:1/-1"><label class="flabel">Upload / Replace Receipt</label><input class="finput" id="em-receipt" type="file" accept="image/*" style="padding:6px 8px"></div>
+    </div>
+    <div style="margin-bottom:18px">
+      <label class="justify-label">⚠️ Reason for change (required)</label>
+      <textarea class="justify-field" id="em-justifyify" placeholder="Why are you editing this expense?"></textarea>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-green" onclick="saveEdit()">💾 Save Changes</button>
+      <button class="btn" style="background:#f0f0f0;color:#666" onclick="closeEditModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT HISTORY MODAL -->
+<div class="emodal-bg hidden" id="hist-modal">
+  <div class="emodal">
+    <h3>📋 Edit History</h3>
+    <div class="emodal-sub" id="hist-modal-title"></div>
+    <div id="hist-modal-body"></div>
+    <button class="btn" style="background:#f0f0f0;color:#666;margin-top:16px" onclick="document.getElementById('hist-modal').classList.add('hidden')">Close</button>
+  </div>
+</div>
+
+<!-- RECEIPT MODAL -->
+<div class="emodal-bg hidden" id="receipt-modal">
+  <div class="emodal" style="max-width:700px">
+    <h3>🧾 Receipt</h3>
+    <div class="emodal-sub" id="receipt-modal-title"></div>
+    <div id="receipt-modal-body" style="margin:16px 0"></div>
+    <button class="btn" style="background:#f0f0f0;color:#666" onclick="document.getElementById('receipt-modal').classList.add('hidden')">Close</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import { getFirestore, doc, setDoc, onSnapshot, getDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+// receiptsRef helper defined after db init
 
 // ============================================================
 // FIREBASE CONFIG
@@ -419,6 +489,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const projectRef = doc(db, 'renovation', '2891-ike-stone');
+const receiptDoc = (id) => doc(db, 'receipts', String(id));
 
 // ============================================================
 // DEFAULT DATA
@@ -696,7 +767,7 @@ function renderTasks(){
         </div>
         <div class="status-row">
           <span class="slabel">Status:</span>
-          ${statuses.map(s=>`<button class="sbtn ${t.status===s?'sel-'+s:''}" onclick="setStatus(${t.id},'${s}')">${s}</button>`).join('')}
+          ${statuses.map(s=>`<button class="sbtn ${t.status===s?'sel-'+s.replace(/ /g,'-'):''}" onclick="setStatus(${t.id},'${s}')">${s}</button>`).join('')}
         </div>
         <div class="notes-row">
           <div class="notes-label">Notes</div>
@@ -849,6 +920,7 @@ function renderSpend(){
   empty.style.display='none';
   tbody.innerHTML=state.spend.map((s,i)=>{
     const margin=s.cost*0.1,total=s.cost+margin,balDue=s.paidBy==='Marcus'?margin:total;
+    const editCount=s.editHistory?.length||0;
     return `<tr>
       <td style="color:#aaa;font-size:11px">${i+1}</td>
       <td style="font-size:12px;white-space:nowrap">${s.date||'—'}</td>
@@ -860,13 +932,18 @@ function renderSpend(){
       <td><span class="paid-tag paid-${s.paidBy}">${s.paidBy}</span></td>
       <td class="right money" style="color:#c0392b;font-weight:700">${fmt2(balDue)}</td>
       <td style="font-size:11px;color:#aaa">${s.ref||'—'}</td>
-      <td><span class="paid-tag paid-${(s.addedBy||'').replace(' ','')}" style="font-size:10px">${s.addedBy||'—'}</span></td>
-      <td><button class="del-btn" onclick="deleteSpend(${s.id})">✕</button></td>
+      <td><span class="paid-tag paid-${(s.addedBy||'').replace(/ /g,'')}" style="font-size:10px">${s.addedBy||'—'}</span></td>
+      <td style="white-space:nowrap">
+        <button class="icon-btn" onclick="openEditModal(${s.id})" title="Edit expense">✏️</button>
+        <button class="icon-btn ${s.hasReceipt?'has-receipt':''}" onclick="${s.hasReceipt?`viewReceipt(${s.id})`:`toast('No receipt attached yet','#888')`}" title="${s.hasReceipt?'View receipt':'No receipt'}">🧾</button>
+        ${editCount>0?`<button class="icon-btn has-history" onclick="viewHistory(${s.id})" title="${editCount} edit${editCount>1?'s':''}">${editCount}✎</button>`:''}
+        <button class="del-btn" onclick="deleteSpend(${s.id})" title="Delete">✕</button>
+      </td>
     </tr>`;
   }).join('');
 }
 
-window.addSpend=function(){
+window.addSpend=async function(){
   if(!currentUser){toast('Please select who you are first','#e74c3c');document.getElementById('user-modal').classList.remove('hidden');return;}
   const cat=document.getElementById('sp-cat').value;
   const desc=document.getElementById('sp-desc').value.trim();
@@ -874,15 +951,19 @@ window.addSpend=function(){
   const paidBy=document.getElementById('sp-paid').value;
   const date=document.getElementById('sp-date').value;
   const ref=document.getElementById('sp-ref').value.trim();
+  const receiptFile=document.getElementById('sp-receipt').files[0];
   if(!cat||isNaN(cost)||cost<=0){toast('Enter a category and valid cost','#e74c3c');return;}
-  state.spend.push({id:state.nextSpendId++,category:cat,desc,cost,paidBy,date,ref,addedBy:currentUser,addedAt:new Date().toISOString()});
+  const newId=state.nextSpendId++;
+  state.spend.push({id:newId,category:cat,desc,cost,paidBy,date,ref,addedBy:currentUser,addedAt:new Date().toISOString(),hasReceipt:false});
   addActivity(`Added $${cost.toFixed(2)} expense for ${cat}`);
+  if(receiptFile) await uploadReceiptForId(newId,receiptFile);
   saveState();
   document.getElementById('sp-desc').value='';
   document.getElementById('sp-cost').value='';
   document.getElementById('sp-ref').value='';
+  document.getElementById('sp-receipt').value='';
   renderSpend();renderBudget();renderDashboard();
-  toast(`Added $${cost.toFixed(2)} to ${cat}`,'#27ae60');
+  toast(`Added $${cost.toFixed(2)} to ${cat}`+(receiptFile?' with receipt':''),'#27ae60');
 }
 
 window.deleteSpend=function(id){
@@ -892,6 +973,168 @@ window.deleteSpend=function(id){
   state.spend=state.spend.filter(s=>s.id!==id);
   saveState();renderSpend();renderBudget();renderDashboard();
   toast('Entry removed','#e67e22');
+}
+
+// ============================================================
+// EDIT / RECEIPT / HISTORY
+// ============================================================
+
+// Compress an image File to a base64 JPEG string
+function compressImage(file, maxWidth=800, quality=0.65){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const scale=Math.min(1,maxWidth/img.width);
+        const canvas=document.createElement('canvas');
+        canvas.width=img.width*scale;
+        canvas.height=img.height*scale;
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        resolve(canvas.toDataURL('image/jpeg',quality));
+      };
+      img.onerror=reject;
+      img.src=e.target.result;
+    };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Upload (or replace) receipt for a given spend ID
+async function uploadReceiptForId(id, file){
+  try{
+    const base64=await compressImage(file);
+    await setDoc(receiptDoc(id),{data:base64,uploadedBy:currentUser,uploadedAt:new Date().toISOString()});
+    const entry=state.spend.find(x=>x.id===id);
+    if(entry) entry.hasReceipt=true;
+    // Note: we call saveState after this in the callers
+    return true;
+  } catch(err){
+    console.error('Receipt upload failed',err);
+    toast('Receipt upload failed','#e74c3c');
+    return false;
+  }
+}
+
+// Open the edit modal and populate it with current expense data
+window.openEditModal=function(id){
+  if(!currentUser){toast('Please select who you are first','#e74c3c');document.getElementById('user-modal').classList.remove('hidden');return;}
+  const s=state.spend.find(x=>x.id===id);
+  if(!s){toast('Expense not found','#e74c3c');return;}
+  document.getElementById('em-id').value=id;
+  document.getElementById('em-date').value=s.date||'';
+  document.getElementById('em-desc').value=s.desc||'';
+  document.getElementById('em-cost').value=s.cost||'';
+  document.getElementById('em-paid').value=s.paidBy||'Anthony';
+  document.getElementById('em-ref').value=s.ref||'';
+  document.getElementById('em-cat').value=s.category||'';
+  document.getElementById('em-justify').value='';
+  document.getElementById('em-receipt').value='';
+  // Populate category dropdown if needed
+  const catSel=document.getElementById('em-cat');
+  if(catSel.options.length===0){
+    state.budget.forEach(b=>{const o=document.createElement('option');o.value=b.category;o.textContent=b.category;catSel.appendChild(o);});
+  }
+  catSel.value=s.category||'';
+  document.getElementById('edit-modal').classList.remove('hidden');
+}
+
+window.closeEditModal=function(){
+  document.getElementById('edit-modal').classList.add('hidden');
+}
+
+window.saveEdit=async function(){
+  const id=parseInt(document.getElementById('em-id').value);
+  const just=document.getElementById('em-justify').value.trim();
+  if(!just){toast('Justification is required to save changes','#e74c3c');document.getElementById('em-justify').focus();return;}
+
+  const s=state.spend.find(x=>x.id===id);
+  if(!s){toast('Expense not found','#e74c3c');return;}
+
+  // Collect changes
+  const newDate=document.getElementById('em-date').value;
+  const newDesc=document.getElementById('em-desc').value.trim();
+  const newCost=parseFloat(document.getElementById('em-cost').value);
+  const newPaid=document.getElementById('em-paid').value;
+  const newRef=document.getElementById('em-ref').value.trim();
+  const newCat=document.getElementById('em-cat').value;
+
+  if(isNaN(newCost)||newCost<=0){toast('Enter a valid cost','#e74c3c');return;}
+
+  const changes=[];
+  if(newDate!==s.date) changes.push(`date: ${s.date||'—'} → ${newDate}`);
+  if(newDesc!==s.desc) changes.push(`desc: "${s.desc||''}" → "${newDesc}"`);
+  if(newCost!==s.cost) changes.push(`cost: $${s.cost.toFixed(2)} → $${newCost.toFixed(2)}`);
+  if(newPaid!==s.paidBy) changes.push(`paidBy: ${s.paidBy} → ${newPaid}`);
+  if(newRef!==s.ref) changes.push(`ref: ${s.ref||'—'} → ${newRef}`);
+  if(newCat!==s.category) changes.push(`category: ${s.category} → ${newCat}`);
+
+  if(changes.length===0 && !document.getElementById('em-receipt').files[0]){
+    toast('No changes detected','#888');closeEditModal();return;
+  }
+
+  // Record history entry
+  if(!s.editHistory) s.editHistory=[];
+  s.editHistory.push({
+    editedBy:currentUser,
+    editedAt:new Date().toISOString(),
+    changes:changes.length?changes:['Receipt updated'],
+    justification:just
+  });
+
+  // Apply changes
+  s.date=newDate; s.desc=newDesc; s.cost=newCost; s.paidBy=newPaid; s.ref=newRef; s.category=newCat;
+
+  // Handle receipt upload
+  const receiptFile=document.getElementById('em-receipt').files[0];
+  if(receiptFile) await uploadReceiptForId(id,receiptFile);
+
+  addActivity(`Edited expense #${id} (${newCat}): ${changes.join('; ')||'receipt updated'}`);
+  saveState();
+  closeEditModal();
+  renderSpend();renderBudget();renderDashboard();
+  toast('Expense updated','#27ae60');
+}
+
+// View receipt image from Firestore
+window.viewReceipt=async function(id){
+  const s=state.spend.find(x=>x.id===id);
+  document.getElementById('receipt-modal-title').textContent=`Receipt — ${s?s.category:''} #${id}`;
+  document.getElementById('receipt-modal-body').innerHTML=`<div style="color:#aaa;padding:24px;text-align:center">Loading…</div>`;
+  document.getElementById('receipt-modal').classList.remove('hidden');
+  try{
+    const snap=await getDoc(receiptDoc(id));
+    if(snap.exists()&&snap.data().data){
+      const d=snap.data();
+      document.getElementById('receipt-modal-body').innerHTML=
+        `<img class="receipt-img" src="${d.data}" alt="Receipt">
+         <div style="font-size:11px;color:#aaa;margin-top:8px">Uploaded by ${d.uploadedBy||'?'} on ${d.uploadedAt?new Date(d.uploadedAt).toLocaleString():''}</div>`;
+    } else {
+      document.getElementById('receipt-modal-body').innerHTML=`<div style="color:#aaa;padding:24px;text-align:center">No receipt found.</div>`;
+    }
+  } catch(err){
+    document.getElementById('receipt-modal-body').innerHTML=`<div style="color:#e74c3c;padding:24px;text-align:center">Failed to load receipt.</div>`;
+  }
+}
+
+// View edit history for an expense
+window.viewHistory=function(id){
+  const s=state.spend.find(x=>x.id===id);
+  if(!s){toast('Entry not found','#e74c3c');return;}
+  document.getElementById('hist-modal-title').textContent=`Edit History — ${s.category} #${id}`;
+  const hist=s.editHistory||[];
+  if(!hist.length){
+    document.getElementById('hist-modal-body').innerHTML=`<div style="color:#aaa;padding:16px;text-align:center">No edits recorded.</div>`;
+  } else {
+    document.getElementById('hist-modal-body').innerHTML=hist.slice().reverse().map(h=>`
+      <div class="hist-entry">
+        <div class="hist-who">${h.editedBy||'?'} &nbsp;·&nbsp; ${h.editedAt?new Date(h.editedAt).toLocaleString():''}</div>
+        <div class="hist-change">${Array.isArray(h.changes)?h.changes.map(c=>`• ${c}`).join('<br>'):'(no details)'}</div>
+        <div class="hist-just">💬 ${h.justification||''}</div>
+      </div>`).join('');
+  }
+  document.getElementById('hist-modal').classList.remove('hidden');
 }
 
 // Margin preview
