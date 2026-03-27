@@ -234,6 +234,57 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
 .empty{text-align:center;padding:40px 20px;color:#bbb}
 .empty p{font-size:14px}
 
+/* Payments */
+.pay-table{width:100%;border-collapse:collapse;font-size:13px}
+.pay-table th{background:#f8f9fb;padding:10px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:#999;font-weight:800;border-bottom:2px solid #e8eaed;white-space:nowrap}
+.pay-table th.right,.pay-table td.right{text-align:right}
+.pay-table td{padding:10px 12px;border-bottom:1px solid #f5f5f5;vertical-align:middle}
+.pay-table tr:hover td{background:#fafbfc}
+.pay-method{padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700;display:inline-block;background:#e8f4fd;color:#2980b9}
+.bal-remaining{font-size:13px;font-weight:700;color:#27ae60}
+.bal-remaining.owed{color:#c0392b}
+
+/* Margin toggle */
+.toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.toggle-label{font-size:12px;font-weight:700;color:#555}
+.toggle-switch{position:relative;width:42px;height:22px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:22px;transition:.2s}
+.toggle-slider:before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s}
+input:checked+.toggle-slider{background:#27ae60}
+input:checked+.toggle-slider:before{transform:translateX(20px)}
+.hidden-col{display:none}
+
+/* Date edit in task body */
+.date-edit-row{display:flex;gap:10px;align-items:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0}
+
+/* Gantt edit btn */
+.gantt-edit-btn{background:none;border:none;cursor:pointer;font-size:11px;padding:1px 4px;border-radius:3px;color:#ccc;margin-left:auto;flex-shrink:0;transition:color .15s}
+.gantt-edit-btn:hover{color:#2980b9;background:#ebf5fb}
+
+/* Actual bars on Gantt */
+.gantt-bar-actual{position:absolute;height:5px;border-radius:2px;bottom:3px;pointer-events:none;opacity:0.9}
+.bar-act-decision{background:#6c3483}
+.bar-act-construction{background:#784212}
+.bar-act-finish{background:#1e8449}
+.bar-act-inprog{background:repeating-linear-gradient(90deg,#2471a3 0,#2471a3 5px,#5dade2 5px,#5dade2 10px)}
+
+/* Variance chips */
+.var-chip{display:inline-flex;align-items:center;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:800;flex-shrink:0}
+.var-chip.early{background:#eafaf1;color:#1e8449}
+.var-chip.late{background:#fdedec;color:#c0392b}
+.var-chip.ontime{background:#f0f0f0;color:#888}
+.var-chip.active{background:#ebf5fb;color:#2471a3}
+
+/* Actual dates in task header */
+.task-actual-dates{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;flex-shrink:0}
+.task-actual-dates.inprog{background:#ebf5fb;color:#2471a3}
+.task-actual-dates.done{background:#eafaf1;color:#1e8449}
+
+/* Actual date section in task body */
+.actual-section{background:#f8fff9;border:1px solid #d5f5e3;border-radius:8px;padding:12px 14px;margin-top:10px}
+.actual-section-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:#27ae60;margin-bottom:10px}
+
 @media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}.dash-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.stat-grid{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.header{flex-direction:column;gap:10px;align-items:flex-start}.content{padding:12px}.gantt-label{width:130px;min-width:130px;font-size:11px}}
 </style>
@@ -279,6 +330,7 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
   <div class="tab" onclick="switchTab('gantt',this)">📅 Timeline</div>
   <div class="tab" onclick="switchTab('budget',this)">💰 Budget</div>
   <div class="tab" onclick="switchTab('spend',this)">🧾 Spend Log</div>
+  <div class="tab" onclick="switchTab('payments',this)">💸 Payments</div>
 </div>
 
 <!-- CONTENT -->
@@ -324,6 +376,9 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
         <div class="leg-item"><div class="leg-dot" style="background:#e67e22"></div>Construction</div>
         <div class="leg-item"><div class="leg-dot" style="background:#27ae60"></div>Finish</div>
         <div class="leg-item"><div class="leg-dot" style="background:#e74c3c;width:3px;height:12px;border-radius:1px"></div>Today</div>
+        <div class="leg-item"><div class="leg-dot" style="height:5px;border-radius:2px;background:#27ae60"></div>Actual (done)</div>
+        <div class="leg-item"><div class="leg-dot" style="height:5px;border-radius:2px;background:repeating-linear-gradient(90deg,#2471a3 0,#2471a3 5px,#5dade2 5px,#5dade2 10px)"></div>Actual (in progress)</div>
+        <div class="leg-item" style="font-size:10px;color:#aaa">▲early &nbsp;▼late</div>
       </div>
       <div class="gantt-wrapper">
         <div class="gantt-container" id="gantt-container"></div>
@@ -334,7 +389,10 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
   <!-- BUDGET -->
   <div id="tab-budget" class="tab-content">
     <div class="card">
-      <div class="section-title">Budget Overview — 10% margin applied to Anthony's cost</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="section-title" style="margin-bottom:0">Budget Overview — 10% margin applied to Anthony's cost &nbsp;<span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb;font-size:10px">Click ✏️ on any row to edit</span></div>
+        <button class="btn btn-green btn-sm" onclick="openAddBudgetRow()">+ Add Category</button>
+      </div>
       <div style="overflow-x:auto">
         <table class="budget-table">
           <thead>
@@ -399,6 +457,14 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
         <span id="margin-preview" style="font-size:12px;color:#888;margin-left:8px"></span>
       </div>
     </div>
+    <div class="toggle-row">
+      <span class="toggle-label">Show 10% Margin</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="margin-toggle" checked onchange="toggleMargin()">
+        <span class="toggle-slider"></span>
+      </label>
+      <span id="margin-toggle-label" style="font-size:11px;color:#aaa">Margin included in totals</span>
+    </div>
     <div class="spend-totals" id="spend-totals"></div>
     <div class="card">
       <div style="overflow-x:auto">
@@ -406,7 +472,8 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
           <thead>
             <tr>
               <th>#</th><th>Date</th><th>Category</th><th>Description</th>
-              <th class="right">Cost</th><th class="right">10% Margin</th>
+              <th class="right">Cost</th>
+              <th class="right margin-col">10% Margin</th>
               <th class="right">Total</th><th>Paid By</th>
               <th class="right">Balance Due</th><th>Ref #</th><th>By</th><th>Actions</th>
             </tr>
@@ -415,6 +482,56 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
         </table>
       </div>
       <div class="empty" id="spend-empty" style="display:none"><p>No expenses logged yet.</p></div>
+    </div>
+  </div>
+
+  <!-- PAYMENTS -->
+  <div id="tab-payments" class="tab-content">
+    <div class="spend-form">
+      <div class="form-title">💸 Log a Payment — Marcus → Anthony</div>
+      <div class="form-grid">
+        <div class="fg">
+          <label class="flabel">Amount ($)</label>
+          <input class="finput" id="pay-amount" type="number" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div class="fg">
+          <label class="flabel">Date</label>
+          <input class="finput" id="pay-date" type="date">
+        </div>
+        <div class="fg">
+          <label class="flabel">Method</label>
+          <select class="fselect" id="pay-method">
+            <option>Zelle</option>
+            <option>Check</option>
+            <option>Cash</option>
+            <option>Invoice</option>
+            <option>Wire</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1">
+          <label class="flabel">Note (optional)</label>
+          <input class="finput" id="pay-note" type="text" placeholder="e.g. Week 3 draw, materials reimbursement...">
+        </div>
+      </div>
+      <div class="form-row">
+        <button class="btn btn-green" onclick="addPayment()">+ Log Payment</button>
+      </div>
+    </div>
+    <div class="spend-totals" id="pay-totals"></div>
+    <div class="card">
+      <div style="overflow-x:auto">
+        <table class="pay-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Date</th><th>Method</th><th>Note</th>
+              <th class="right">Amount</th><th>Logged By</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="pay-tbody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="pay-empty" style="display:none"><p>No payments logged yet.</p></div>
     </div>
   </div>
 
@@ -437,7 +554,7 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
     </div>
     <div style="margin-bottom:18px">
       <label class="justify-label">⚠️ Reason for change (required)</label>
-      <textarea class="justify-field" id="em-justifyify" placeholder="Why are you editing this expense?"></textarea>
+      <textarea class="justify-field" id="em-justify" placeholder="Why are you editing this expense?"></textarea>
     </div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-green" onclick="saveEdit()">💾 Save Changes</button>
@@ -463,6 +580,60 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
     <div class="emodal-sub" id="receipt-modal-title"></div>
     <div id="receipt-modal-body" style="margin:16px 0"></div>
     <button class="btn" style="background:#f0f0f0;color:#666" onclick="document.getElementById('receipt-modal').classList.add('hidden')">Close</button>
+  </div>
+</div>
+
+<!-- ADD BUDGET ROW MODAL -->
+<div class="emodal-bg hidden" id="add-budget-modal">
+  <div class="emodal" style="max-width:440px">
+    <h3>➕ Add Budget Category</h3>
+    <div class="emodal-sub">Add a new line item to the budget</div>
+    <div class="form-grid" style="margin-bottom:16px">
+      <div class="fg" style="grid-column:1/-1"><label class="flabel">Category Name</label><input class="finput" id="nb-cat" type="text" placeholder="e.g. Exterior Paint, Deck Railing..."></div>
+      <div class="fg"><label class="flabel">Marcus Budget ($)</label><input class="finput" id="nb-marcus" type="number" step="1" min="0" placeholder="0"></div>
+      <div class="fg"><label class="flabel">Anthony Estimate ($)</label><input class="finput" id="nb-anthony" type="number" step="1" min="0" placeholder="0"></div>
+      <div class="fg"><label class="flabel">Anticipated ($)</label><input class="finput" id="nb-anticipated" type="number" step="1" min="0" placeholder="0"></div>
+      <div class="fg"><label class="flabel">Notes</label><input class="finput" id="nb-notes" type="text" placeholder="Optional"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-green" onclick="addBudgetRow()">➕ Add Category</button>
+      <button class="btn" style="background:#f0f0f0;color:#666" onclick="document.getElementById('add-budget-modal').classList.add('hidden')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- BUDGET EDIT MODAL -->
+<div class="emodal-bg hidden" id="budget-edit-modal">
+  <div class="emodal" style="max-width:440px">
+    <h3>💰 Edit Budget — <span id="be-cat-name"></span></h3>
+    <div class="emodal-sub">Update budget figures for this category</div>
+    <div class="form-grid" style="margin-bottom:16px">
+      <div class="fg"><label class="flabel">Marcus Budget ($)</label><input class="finput" id="be-marcus" type="number" step="1" min="0"></div>
+      <div class="fg"><label class="flabel">Anthony Estimate ($)</label><input class="finput" id="be-anthony" type="number" step="1" min="0"></div>
+      <div class="fg"><label class="flabel">Anticipated ($)</label><input class="finput" id="be-anticipated" type="number" step="1" min="0"></div>
+      <div class="fg"><label class="flabel">Notes</label><input class="finput" id="be-notes" type="text" placeholder="Optional note"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-green" onclick="saveBudgetEdit()">💾 Save Budget</button>
+      <button class="btn" style="background:#f0f0f0;color:#666" onclick="closeBudgetEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- DATE EDIT MODAL -->
+<div class="emodal-bg hidden" id="date-edit-modal">
+  <div class="emodal" style="max-width:420px">
+    <h3>📅 Edit Task Dates</h3>
+    <div class="emodal-sub" id="date-modal-task-name"></div>
+    <input type="hidden" id="dm-task-id">
+    <div class="form-grid" style="margin-bottom:20px">
+      <div class="fg"><label class="flabel">Start Date</label><input class="finput" id="dm-start" type="date"></div>
+      <div class="fg"><label class="flabel">End Date</label><input class="finput" id="dm-end" type="date"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-blue" onclick="saveDates()">📅 Save Dates</button>
+      <button class="btn" style="background:#f0f0f0;color:#666" onclick="closeDateModal()">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -537,10 +708,11 @@ const DEFAULT_SPEND = [
 // ============================================================
 // STATE
 // ============================================================
-let state = {tasks:[],budget:[],spend:[],nextSpendId:2,activity:[]};
+let state = {tasks:[],budget:[],spend:[],nextSpendId:2,activity:[],payments:[],nextPaymentId:1};
 let currentUser = localStorage.getItem('reno_user') || '';
 let isRemoteUpdate = false;
 let saveTimer = null;
+let showMargin = true;
 
 // ============================================================
 // HELPERS
@@ -600,6 +772,8 @@ function saveState(){
         spend: state.spend,
         nextSpendId: state.nextSpendId,
         activity: state.activity||[],
+        payments: state.payments||[],
+        nextPaymentId: state.nextPaymentId||1,
         lastUpdatedBy: currentUser,
         lastUpdatedAt: new Date().toISOString(),
       });
@@ -625,6 +799,7 @@ window.switchTab = function(tab, el){
   if(tab==='gantt') renderGantt();
   if(tab==='budget') renderBudget();
   if(tab==='spend') renderSpend();
+  if(tab==='payments') renderPayments();
 }
 
 function renderAll(){
@@ -635,6 +810,7 @@ function renderAll(){
   else if(id==='gantt') renderGantt();
   else if(id==='budget') renderBudget();
   else if(id==='spend') renderSpend();
+  else if(id==='payments') renderPayments();
   renderDashboard(); // always keep dashboard fresh
 }
 
@@ -671,6 +847,9 @@ function renderDashboard(){
   const totalBudget=state.budget.reduce((s,b)=>s+b.marcus,0);
   const totalSpent=state.spend.reduce((s,x)=>s+x.cost*1.1,0);
   const spentPct=Math.min(100,Math.round(totalSpent/totalBudget*100));
+  const totalDue=state.spend.reduce((s,x)=>s+(x.paidBy==='Marcus'?x.cost*0.1:x.cost*1.1),0);
+  const totalPayments=(state.payments||[]).reduce((s,p)=>s+p.amount,0);
+  const balanceRemaining=Math.max(0,totalDue-totalPayments);
 
   document.getElementById('dash-stats').innerHTML=`
     <div class="stat-card blue">
@@ -691,9 +870,9 @@ function renderDashboard(){
       <div class="stat-sub">${spentPct}% of Marcus budget (${fmt(totalBudget)})</div>
     </div>
     <div class="stat-card purple">
-      <div class="stat-value">${blocked}</div>
-      <div class="stat-label">Blocked Tasks</div>
-      <div class="stat-sub">${blocked===0?'✅ All clear':'⚠️ Needs attention'}</div>
+      <div class="stat-value">${fmt(balanceRemaining)}</div>
+      <div class="stat-label">Balance Due Anthony</div>
+      <div class="stat-sub">${fmt(totalPayments)} paid · ${blocked} blocked task${blocked!==1?'s':''}</div>
     </div>`;
 
   const upcoming=tasks.filter(t=>t.status!=='Complete').slice(0,5);
@@ -749,25 +928,56 @@ function renderTasks(){
   const catColors={Decision:'#9b59b6',Construction:'#e67e22',Finish:'#27ae60'};
   const slugStatus=(s)=>s.replace(/ /g,'-').toLowerCase();
 
-  document.getElementById('task-list').innerHTML=filtered.map(t=>`
+  document.getElementById('task-list').innerHTML=filtered.map(t=>{
+    const hasActual=t.actualStart||t.actualEnd;
+    const startVar=t.actualStart&&t.start?daysBetween(parseDate(t.start),parseDate(t.actualStart)):null;
+    const endVar=t.actualEnd&&t.end?daysBetween(parseDate(t.end),parseDate(t.actualEnd)):null;
+    const varChip=(v,label)=>{
+      if(v===null) return '';
+      if(v===0) return `<span class="var-chip ontime">${label}: on time</span>`;
+      if(v<0) return `<span class="var-chip early">${label}: ${Math.abs(v)}d early</span>`;
+      return `<span class="var-chip late">${label}: ${v}d late</span>`;
+    };
+    const actualHeaderBadge=t.actualStart&&!t.actualEnd
+      ?`<span class="task-actual-dates inprog">▶ Started ${formatDate(t.actualStart)}</span>`
+      :t.actualEnd
+        ?`<span class="task-actual-dates done">✓ ${formatDate(t.actualStart||'?')} → ${formatDate(t.actualEnd)}</span>`
+        :'';
+    return `
     <div class="task-item s-${slugStatus(t.status)}" id="ti-${t.id}">
       <div class="task-header" onclick="toggleTask(${t.id})">
         <div class="task-num">${t.id}</div>
         <div style="width:10px;height:10px;border-radius:2px;background:${catColors[t.category]||'#ccc'};flex-shrink:0"></div>
         <div class="task-name">${t.name}</div>
         <span class="badge badge-${t.status.replace(/ /g,'-')}" style="flex-shrink:0">${t.status}</span>
-        <div class="task-dates">${formatDate(t.start)} – ${formatDate(t.end)}</div>
+        ${actualHeaderBadge}
+        <div class="task-dates" style="color:#bbb;font-size:10px">📅 ${formatDate(t.start)} – ${formatDate(t.end)}</div>
         <div class="task-chevron ${openTasks.has(t.id)?'open':''}">▼</div>
       </div>
       <div class="task-body ${openTasks.has(t.id)?'open':''}" id="tb-${t.id}">
         <div class="task-meta">
-          <div class="task-meta-item"><strong>Duration:</strong> ${t.duration} days</div>
+          <div class="task-meta-item"><strong>Planned Duration:</strong> ${t.duration} days</div>
           <div class="task-meta-item"><strong>Category:</strong> ${t.category}</div>
           ${t.deps?`<div class="task-meta-item"><strong>Depends on:</strong> Tasks ${t.deps}</div>`:''}
+          ${startVar!==null?varChip(startVar,'Start'):''}
+          ${endVar!==null?varChip(endVar,'Finish'):''}
         </div>
         <div class="status-row">
           <span class="slabel">Status:</span>
           ${statuses.map(s=>`<button class="sbtn ${t.status===s?'sel-'+s.replace(/ /g,'-'):''}" onclick="setStatus(${t.id},'${s}')">${s}</button>`).join('')}
+        </div>
+        <div class="date-edit-row">
+          <div class="fg"><label class="flabel">📅 Planned Start</label><input class="finput" id="tstart-${t.id}" type="date" value="${t.start||''}"></div>
+          <div class="fg"><label class="flabel">📅 Planned End</label><input class="finput" id="tend-${t.id}" type="date" value="${t.end||''}"></div>
+          <button class="btn btn-blue btn-sm" style="align-self:flex-end" onclick="saveTaskDates(${t.id})">📅 Update Plan</button>
+        </div>
+        <div class="actual-section">
+          <div class="actual-section-title">✅ Actual Dates</div>
+          <div class="date-edit-row" style="margin-top:0;padding-top:0;border-top:none">
+            <div class="fg"><label class="flabel">Actual Start</label><input class="finput" id="astart-${t.id}" type="date" value="${t.actualStart||''}" placeholder="Not started"></div>
+            <div class="fg"><label class="flabel">Actual End / Completed</label><input class="finput" id="aend-${t.id}" type="date" value="${t.actualEnd||''}" placeholder="Not complete"></div>
+            <button class="btn btn-green btn-sm" style="align-self:flex-end" onclick="saveActualDates(${t.id})">✅ Save Actuals</button>
+          </div>
         </div>
         <div class="notes-row">
           <div class="notes-label">Notes</div>
@@ -775,7 +985,8 @@ function renderTasks(){
           <button class="btn btn-blue btn-sm" style="margin-top:7px" onclick="saveNotes(${t.id})">💾 Save Notes</button>
         </div>
       </div>
-    </div>`).join('')||'<div class="empty"><p>No tasks in this filter.</p></div>';
+    </div>`;
+  }).join('')||'<div class="empty"><p>No tasks in this filter.</p></div>';
 }
 
 window.filterTasks=function(f,el){
@@ -792,10 +1003,34 @@ window.setStatus=function(id,status){
   const t=state.tasks.find(x=>x.id===id);
   if(t){
     const old=t.status; t.status=status;
+    const todayStr=today().toISOString().split('T')[0];
+    // Auto-stamp actual dates
+    if(status==='In Progress' && !t.actualStart){
+      t.actualStart=todayStr;
+    }
+    if(status==='Complete'){
+      if(!t.actualStart) t.actualStart=todayStr;
+      if(!t.actualEnd) t.actualEnd=todayStr;
+    }
+    if(status==='Not Started'){
+      t.actualStart=''; t.actualEnd='';
+    }
     addActivity(`Marked "${t.name}" → ${status}`);
-    saveState(); renderTasks(); renderDashboard();
+    saveState(); renderTasks(); renderGantt(); renderDashboard();
     toast(`Task ${id}: ${old} → ${status}`,'#27ae60');
   }
+}
+
+window.saveActualDates=function(id){
+  const t=state.tasks.find(x=>x.id===id);
+  if(!t) return;
+  const aStart=document.getElementById('astart-'+id)?.value||'';
+  const aEnd=document.getElementById('aend-'+id)?.value||'';
+  if(aEnd && aStart && aEnd<aStart){toast('Actual end must be after actual start','#e74c3c');return;}
+  t.actualStart=aStart; t.actualEnd=aEnd;
+  addActivity(`Set actual dates for "${t.name}"${aStart?' · started '+formatDate(aStart):''}${aEnd?' · completed '+formatDate(aEnd):''}`);
+  saveState(); renderTasks(); renderGantt(); renderDashboard();
+  toast('Actual dates saved','#27ae60');
 }
 window.saveNotes=function(id){
   const t=state.tasks.find(x=>x.id===id);
@@ -830,22 +1065,46 @@ function renderGantt(){
     <div class="gantt-head-weeks">${weeks.map(w=>`<div class="gantt-week-col ${isCurrentWeek(w)?'current-week':''}">${w.toLocaleDateString('en-US',{month:'numeric',day:'numeric'})}</div>`).join('')}</div>
   </div>`;
 
+  const actClass={Decision:'bar-act-decision',Construction:'bar-act-construction',Finish:'bar-act-finish'};
   const rows=state.tasks.map(t=>{
     const ts=parseDate(t.start),te=parseDate(t.end);
     const leftPct=Math.max(0,daysBetween(GANTT_START,ts)/TOTAL_DAYS*100);
     const widthPct=Math.max(1,daysBetween(ts,te)/TOTAL_DAYS*100);
-    const opacity=t.status==='Complete'?'0.5':'1';
+    const opacity=t.status==='Complete'?'0.55':'1';
+
+    // Actual progress bar
+    let actualBar='';
+    if(t.actualStart){
+      const as=parseDate(t.actualStart);
+      const ae=t.actualEnd?parseDate(t.actualEnd):td;
+      const aLeft=Math.max(0,daysBetween(GANTT_START,as)/TOTAL_DAYS*100);
+      const aWidth=Math.max(0.5,daysBetween(as,ae)/TOTAL_DAYS*100);
+      const aClass=t.actualEnd?(actClass[t.category]||'bar-act-construction'):'bar-act-inprog';
+      const aTitle=`Actual: ${formatDate(t.actualStart)} → ${t.actualEnd?formatDate(t.actualEnd):'in progress'}`;
+      actualBar=`<div class="gantt-bar-actual ${aClass}" style="left:${aLeft}%;width:${aWidth}%" title="${aTitle}"></div>`;
+    }
+
+    // Variance indicator on label
+    const endVar=t.actualEnd&&t.end?daysBetween(parseDate(t.end),parseDate(t.actualEnd)):null;
+    const startVar=t.actualStart&&t.start&&!t.actualEnd?daysBetween(parseDate(t.start),parseDate(t.actualStart)):null;
+    const vv=endVar!==null?endVar:startVar;
+    const varHint=vv!==null?(vv===0?' ✓':vv<0?` ▲${Math.abs(vv)}d`:` ▼${vv}d`):'';
+    const varColor=vv!==null?(vv<=0?'#27ae60':'#e74c3c'):'#ccc';
+
     return `<div class="gantt-row">
       <div class="gantt-label" title="${t.name}">
         <div style="width:8px;height:8px;border-radius:2px;background:${catDot[t.category]};flex-shrink:0"></div>
-        <span>${t.id}. ${t.name}</span>
+        <span style="overflow:hidden;text-overflow:ellipsis">${t.id}. ${t.name}</span>
+        ${varHint?`<span style="font-size:9px;font-weight:800;color:${varColor};flex-shrink:0">${varHint}</span>`:''}
+        <button class="gantt-edit-btn" onclick="openDateEditModal(${t.id})" title="Edit planned dates">✏️</button>
       </div>
       <div class="gantt-track">
         ${weeks.map((_,i)=>`<div class="gantt-grid-line" style="left:${i/weeks.length*100}%"></div>`).join('')}
         <div class="gantt-today-line" style="left:${todayPct}%"></div>
-        <div class="gantt-bar ${catClass[t.category]||'bar-construction'}" style="left:${leftPct}%;width:${widthPct}%;opacity:${opacity}" title="${t.name} | ${formatDate(t.start)}–${formatDate(t.end)} | ${t.duration}d | ${t.status}">
+        <div class="gantt-bar ${catClass[t.category]||'bar-construction'}" style="left:${leftPct}%;width:${widthPct}%;opacity:${opacity}" title="Planned: ${formatDate(t.start)}–${formatDate(t.end)} | ${t.duration}d | ${t.status}">
           ${widthPct>8?t.name:''}
         </div>
+        ${actualBar}
       </div>
     </div>`;
   }).join('');
@@ -866,8 +1125,13 @@ function renderBudget(){
     totM+=b.marcus;totA+=b.anthony;totAnt+=b.anticipated;totAct+=actual;
     const vC=(v)=>v<0?'var-pos':v>0?'var-neg':'var-zero';
     const vS=(v)=>v<0?'▼ ':v>0?'▲ ':'';
+    const catEsc=b.category.replace(/'/g,"\\'");
     return `<tr>
-      <td><span class="cat-name">${b.category}</span>${b.notes?`<span class="note-tag">${b.notes}</span>`:''}</td>
+      <td>
+        <span class="cat-name">${b.category}</span>
+        ${b.notes?`<span class="note-tag">${b.notes}</span>`:''}
+        <button class="icon-btn" style="margin-left:4px;font-size:12px" onclick="openBudgetEdit('${catEsc}')" title="Edit budget">✏️</button>
+      </td>
       <td class="right money">${fmt(b.marcus)}</td><td class="right money">${fmt(b.anthony)}</td>
       <td class="right money">${fmt(b.anticipated)}</td><td class="right money">${fmt(actual)}</td>
       <td class="right"><span class="${vC(varM)}">${actual>0?vS(varM)+fmt(varM):'—'}</span></td>
@@ -903,15 +1167,29 @@ function renderSpend(){
   const dateInput=document.getElementById('sp-date');
   if(dateInput&&!dateInput.value) dateInput.value=today().toISOString().split('T')[0];
 
+  // Sync toggle state
+  const toggleEl=document.getElementById('margin-toggle');
+  if(toggleEl) showMargin=toggleEl.checked;
+  const lbl=document.getElementById('margin-toggle-label');
+  if(lbl) lbl.textContent=showMargin?'Margin included in totals':'Showing raw costs only';
+
+  // Apply/remove margin column visibility
+  document.querySelectorAll('.margin-col').forEach(el=>el.style.display=showMargin?'':'none');
+
   const totalCost=state.spend.reduce((s,x)=>s+x.cost,0);
   const totalMargin=state.spend.reduce((s,x)=>s+x.cost*0.1,0);
-  const balanceDue=state.spend.reduce((s,x)=>s+(x.paidBy==='Marcus'?x.cost*0.1:x.cost*1.1),0);
+  const totalDue=state.spend.reduce((s,x)=>s+(x.paidBy==='Marcus'?x.cost*0.1:x.cost*1.1),0);
+  const totalPayments=(state.payments||[]).reduce((s,p)=>s+p.amount,0);
+  const remaining=Math.max(0,totalDue-totalPayments);
+  const grandTotal=showMargin?totalCost+totalMargin:totalCost;
 
   document.getElementById('spend-totals').innerHTML=`
     <div class="st-item"><div class="st-label">Total Cost</div><div class="st-val">${fmt2(totalCost)}</div></div>
-    <div class="st-item"><div class="st-label">Total Margin (10%)</div><div class="st-val">${fmt2(totalMargin)}</div></div>
-    <div class="st-item"><div class="st-label">Grand Total</div><div class="st-val">${fmt2(totalCost+totalMargin)}</div></div>
-    <div class="st-item"><div class="st-label">Balance Due Anthony</div><div class="st-val" style="color:#c0392b">${fmt2(balanceDue)}</div></div>
+    ${showMargin?`<div class="st-item"><div class="st-label">Total Margin (10%)</div><div class="st-val">${fmt2(totalMargin)}</div></div>`:''}
+    <div class="st-item"><div class="st-label">${showMargin?'Grand Total':'Raw Total'}</div><div class="st-val">${fmt2(grandTotal)}</div></div>
+    <div class="st-item"><div class="st-label">Gross Due Anthony</div><div class="st-val" style="color:#c0392b">${fmt2(totalDue)}</div></div>
+    <div class="st-item"><div class="st-label">Payments Made</div><div class="st-val" style="color:#27ae60">− ${fmt2(totalPayments)}</div></div>
+    <div class="st-item"><div class="st-label">Balance Remaining</div><div class="st-val" style="color:${remaining>0?'#c0392b':'#27ae60'}">${fmt2(remaining)}</div></div>
     <div class="st-item"><div class="st-label">Entries</div><div class="st-val">${state.spend.length}</div></div>`;
 
   const tbody=document.getElementById('spend-tbody');
@@ -919,7 +1197,7 @@ function renderSpend(){
   if(!state.spend.length){tbody.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
   tbody.innerHTML=state.spend.map((s,i)=>{
-    const margin=s.cost*0.1,total=s.cost+margin,balDue=s.paidBy==='Marcus'?margin:total;
+    const margin=s.cost*0.1,total=showMargin?s.cost+margin:s.cost,balDue=s.paidBy==='Marcus'?margin:s.cost+margin;
     const editCount=s.editHistory?.length||0;
     return `<tr>
       <td style="color:#aaa;font-size:11px">${i+1}</td>
@@ -927,7 +1205,7 @@ function renderSpend(){
       <td><span style="font-weight:600">${s.category}</span></td>
       <td style="color:#555">${s.desc||'—'}</td>
       <td class="right money">${fmt2(s.cost)}</td>
-      <td class="right money" style="color:#888">${fmt2(margin)}</td>
+      <td class="right money margin-col" style="color:#888;${showMargin?'':'display:none'}">${fmt2(margin)}</td>
       <td class="right money" style="font-weight:700">${fmt2(total)}</td>
       <td><span class="paid-tag paid-${s.paidBy}">${s.paidBy}</span></td>
       <td class="right money" style="color:#c0392b;font-weight:700">${fmt2(balDue)}</td>
@@ -941,6 +1219,12 @@ function renderSpend(){
       </td>
     </tr>`;
   }).join('');
+}
+
+window.toggleMargin=function(){
+  const toggleEl=document.getElementById('margin-toggle');
+  showMargin=toggleEl?toggleEl.checked:showMargin;
+  renderSpend();
 }
 
 window.addSpend=async function(){
@@ -1137,6 +1421,177 @@ window.viewHistory=function(id){
   document.getElementById('hist-modal').classList.remove('hidden');
 }
 
+// ============================================================
+// DATE EDITING (Gantt + Tasks)
+// ============================================================
+window.openDateEditModal=function(id){
+  const t=state.tasks.find(x=>x.id===id);
+  if(!t) return;
+  document.getElementById('dm-task-id').value=id;
+  document.getElementById('date-modal-task-name').textContent=`#${t.id} — ${t.name}`;
+  document.getElementById('dm-start').value=t.start||'';
+  document.getElementById('dm-end').value=t.end||'';
+  document.getElementById('date-edit-modal').classList.remove('hidden');
+}
+window.closeDateModal=function(){
+  document.getElementById('date-edit-modal').classList.add('hidden');
+}
+window.saveDates=function(){
+  const id=parseInt(document.getElementById('dm-task-id').value);
+  const t=state.tasks.find(x=>x.id===id);
+  if(!t){toast('Task not found','#e74c3c');return;}
+  const newStart=document.getElementById('dm-start').value;
+  const newEnd=document.getElementById('dm-end').value;
+  if(!newStart||!newEnd){toast('Both dates are required','#e74c3c');return;}
+  if(newStart>newEnd){toast('Start date must be before end date','#e74c3c');return;}
+  const oldStart=t.start,oldEnd=t.end;
+  t.start=newStart; t.end=newEnd;
+  t.duration=daysBetween(parseDate(newStart),parseDate(newEnd));
+  addActivity(`Updated dates for "${t.name}": ${formatDate(oldStart)}–${formatDate(oldEnd)} → ${formatDate(newStart)}–${formatDate(newEnd)}`);
+  saveState();
+  closeDateModal();
+  renderTasks(); renderGantt(); renderDashboard();
+  toast(`"${t.name}" dates updated`,'#27ae60');
+}
+window.saveTaskDates=function(id){
+  const t=state.tasks.find(x=>x.id===id);
+  if(!t) return;
+  const newStart=document.getElementById('tstart-'+id)?.value;
+  const newEnd=document.getElementById('tend-'+id)?.value;
+  if(!newStart||!newEnd){toast('Both dates are required','#e74c3c');return;}
+  if(newStart>newEnd){toast('Start must be before end date','#e74c3c');return;}
+  const oldStart=t.start,oldEnd=t.end;
+  t.start=newStart; t.end=newEnd;
+  t.duration=daysBetween(parseDate(newStart),parseDate(newEnd));
+  addActivity(`Updated dates for "${t.name}": ${formatDate(oldStart)}–${formatDate(oldEnd)} → ${formatDate(newStart)}–${formatDate(newEnd)}`);
+  saveState();
+  renderTasks(); renderGantt(); renderDashboard();
+  toast(`"${t.name}" dates updated`,'#27ae60');
+}
+
+// ============================================================
+// PAYMENTS
+// ============================================================
+function renderPayments(){
+  const dateInput=document.getElementById('pay-date');
+  if(dateInput&&!dateInput.value) dateInput.value=today().toISOString().split('T')[0];
+  const payments=state.payments||[];
+  const totalPaid=payments.reduce((s,p)=>s+p.amount,0);
+  const totalDue=state.spend.reduce((s,x)=>s+(x.paidBy==='Marcus'?x.cost*0.1:x.cost*1.1),0);
+  const remaining=Math.max(0,totalDue-totalPaid);
+  document.getElementById('pay-totals').innerHTML=`
+    <div class="st-item"><div class="st-label">Gross Due Anthony</div><div class="st-val" style="color:#c0392b">${fmt2(totalDue)}</div></div>
+    <div class="st-item"><div class="st-label">Total Paid</div><div class="st-val" style="color:#27ae60">${fmt2(totalPaid)}</div></div>
+    <div class="st-item"><div class="st-label">Balance Remaining</div><div class="st-val" style="color:${remaining>0?'#c0392b':'#27ae60'}">${fmt2(remaining)}</div></div>
+    <div class="st-item"><div class="st-label">Payments Made</div><div class="st-val">${payments.length}</div></div>`;
+  const tbody=document.getElementById('pay-tbody');
+  const empty=document.getElementById('pay-empty');
+  if(!payments.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  let running=0;
+  tbody.innerHTML=payments.map((p,i)=>{
+    running+=p.amount;
+    return `<tr>
+      <td style="color:#aaa;font-size:11px">${i+1}</td>
+      <td style="font-size:12px;white-space:nowrap">${p.date||'—'}</td>
+      <td><span class="pay-method">${p.method||'—'}</span></td>
+      <td style="color:#555">${p.note||'—'}</td>
+      <td class="right money" style="color:#27ae60;font-weight:700">+${fmt2(p.amount)}</td>
+      <td><span class="paid-tag paid-Marcus" style="font-size:10px">${p.addedBy||'—'}</span></td>
+      <td><button class="del-btn" onclick="deletePayment(${p.id})" title="Delete">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+window.addPayment=function(){
+  if(!currentUser){toast('Please select who you are first','#e74c3c');document.getElementById('user-modal').classList.remove('hidden');return;}
+  const amount=parseFloat(document.getElementById('pay-amount').value);
+  const date=document.getElementById('pay-date').value;
+  const method=document.getElementById('pay-method').value;
+  const note=document.getElementById('pay-note').value.trim();
+  if(isNaN(amount)||amount<=0){toast('Enter a valid payment amount','#e74c3c');return;}
+  if(!state.payments) state.payments=[];
+  if(!state.nextPaymentId) state.nextPaymentId=1;
+  const newId=state.nextPaymentId++;
+  state.payments.push({id:newId,date,amount,method,note,addedBy:currentUser,addedAt:new Date().toISOString()});
+  addActivity(`Logged payment of ${fmt2(amount)} via ${method}`);
+  saveState();
+  document.getElementById('pay-amount').value='';
+  document.getElementById('pay-note').value='';
+  renderPayments(); renderDashboard(); renderSpend();
+  toast(`Payment of ${fmt2(amount)} logged`,'#27ae60');
+}
+
+window.deletePayment=function(id){
+  if(!confirm('Remove this payment?')) return;
+  const p=(state.payments||[]).find(x=>x.id===id);
+  if(p) addActivity(`Removed payment of ${fmt2(p.amount)}`);
+  state.payments=(state.payments||[]).filter(x=>x.id!==id);
+  saveState(); renderPayments(); renderDashboard(); renderSpend();
+  toast('Payment removed','#e67e22');
+}
+
+// ============================================================
+// BUDGET EDITING
+// ============================================================
+let editingBudgetCat=null;
+
+window.openAddBudgetRow=function(){
+  document.getElementById('nb-cat').value='';
+  document.getElementById('nb-marcus').value='';
+  document.getElementById('nb-anthony').value='';
+  document.getElementById('nb-anticipated').value='';
+  document.getElementById('nb-notes').value='';
+  document.getElementById('add-budget-modal').classList.remove('hidden');
+}
+window.addBudgetRow=function(){
+  const cat=document.getElementById('nb-cat').value.trim();
+  if(!cat){toast('Category name is required','#e74c3c');document.getElementById('nb-cat').focus();return;}
+  if(state.budget.find(b=>b.category===cat)){toast('Category already exists','#e74c3c');return;}
+  const marcus=parseFloat(document.getElementById('nb-marcus').value)||0;
+  const anthony=parseFloat(document.getElementById('nb-anthony').value)||0;
+  const anticipated=parseFloat(document.getElementById('nb-anticipated').value)||0;
+  const notes=document.getElementById('nb-notes').value.trim();
+  state.budget.push({category:cat,marcus,anthony,anticipated,notes});
+  // Also add to sp-cat dropdown
+  const catSel=document.getElementById('sp-cat');
+  if(catSel){const o=document.createElement('option');o.value=cat;o.textContent=cat;catSel.appendChild(o);}
+  addActivity(`Added budget category: ${cat}`);
+  saveState();
+  document.getElementById('add-budget-modal').classList.add('hidden');
+  renderBudget(); renderDashboard();
+  toast(`${cat} added to budget`,'#27ae60');
+}
+window.openBudgetEdit=function(cat){
+  const b=state.budget.find(x=>x.category===cat);
+  if(!b) return;
+  editingBudgetCat=cat;
+  document.getElementById('be-cat-name').textContent=cat;
+  document.getElementById('be-marcus').value=b.marcus||0;
+  document.getElementById('be-anthony').value=b.anthony||0;
+  document.getElementById('be-anticipated').value=b.anticipated||0;
+  document.getElementById('be-notes').value=b.notes||'';
+  document.getElementById('budget-edit-modal').classList.remove('hidden');
+}
+window.closeBudgetEdit=function(){
+  document.getElementById('budget-edit-modal').classList.add('hidden');
+  editingBudgetCat=null;
+}
+window.saveBudgetEdit=function(){
+  const b=state.budget.find(x=>x.category===editingBudgetCat);
+  if(!b){toast('Category not found','#e74c3c');return;}
+  const marcus=parseFloat(document.getElementById('be-marcus').value)||0;
+  const anthony=parseFloat(document.getElementById('be-anthony').value)||0;
+  const anticipated=parseFloat(document.getElementById('be-anticipated').value)||0;
+  const notes=document.getElementById('be-notes').value.trim();
+  b.marcus=marcus; b.anthony=anthony; b.anticipated=anticipated; b.notes=notes;
+  addActivity(`Updated budget for ${editingBudgetCat}`);
+  saveState();
+  closeBudgetEdit();
+  renderBudget(); renderDashboard();
+  toast(`${editingBudgetCat} budget updated`,'#27ae60');
+}
+
 // Margin preview
 document.getElementById('sp-cost').addEventListener('input',()=>{
   const v=parseFloat(document.getElementById('sp-cost').value);
@@ -1159,6 +1614,8 @@ async function init(){
       state.spend=data.spend||JSON.parse(JSON.stringify(DEFAULT_SPEND));
       state.nextSpendId=data.nextSpendId||(Math.max(0,...state.spend.map(x=>x.id))+1);
       state.activity=data.activity||[];
+      state.payments=data.payments||[];
+      state.nextPaymentId=data.nextPaymentId||1;
     } else {
       // First time — seed with defaults and save
       state.tasks=JSON.parse(JSON.stringify(DEFAULT_TASKS));
@@ -1186,6 +1643,7 @@ async function init(){
     renderGantt();
     renderBudget();
     renderSpend();
+    renderPayments();
 
     // Real-time listener — only re-render on remote changes
     onSnapshot(projectRef,(snap)=>{
@@ -1198,8 +1656,10 @@ async function init(){
         state.spend=data.spend||state.spend;
         state.nextSpendId=data.nextSpendId||state.nextSpendId;
         state.activity=data.activity||state.activity;
+        state.payments=data.payments||state.payments;
+        state.nextPaymentId=data.nextPaymentId||state.nextPaymentId;
         setSyncStatus('synced');
-        renderAll();renderGantt();renderBudget();renderSpend();
+        renderAll();renderGantt();renderBudget();renderSpend();renderPayments();
         if(updatedBy!==currentUser) toast(`🔄 ${updatedBy} just made an update`,'#2980b9');
       }
     });
