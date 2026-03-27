@@ -210,6 +210,13 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
 .icon-btn.is-paid{color:#27ae60;font-weight:800}
 .spend-table tr.row-paid td{background:#f0faf4;color:#555}
 .spend-table tr.row-paid td.money{color:#888!important}
+.spend-table tr.row-tracking td{background:#f9f5ff;color:#555}
+.tracking-badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#e8d5f5;color:#7d3c98;margin-left:4px}
+.appliances-block{background:#f9f5ff;border:1px solid #d7bde2;border-radius:10px;padding:16px 20px;margin-top:14px}
+.appliances-block .ab-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:#7d3c98;margin-bottom:10px}
+.appliances-block .ab-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #ead6f7;font-size:13px}
+.appliances-block .ab-row:last-child{border-bottom:none;font-weight:700}
+.appliances-block .ab-total{display:flex;justify-content:space-between;padding-top:10px;font-size:15px;font-weight:800;color:#7d3c98}
 /* Edit / History / Receipt modals */
 .emodal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:7000;backdrop-filter:blur(3px)}
 .emodal-bg.hidden{display:none}
@@ -461,6 +468,10 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
           <input type="checkbox" id="sp-margin" checked style="width:15px;height:15px;cursor:pointer">
           Apply 10% margin
         </label>
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:#7d3c98;margin-left:16px;user-select:none" title="Tracked for reference only — excluded from project totals and balance due">
+          <input type="checkbox" id="sp-tracking" style="width:15px;height:15px;cursor:pointer" onchange="if(this.checked){document.getElementById('sp-margin').checked=false;}">
+          Tracking Only (Appliances)
+        </label>
         <span id="margin-preview" style="font-size:12px;color:#888;margin-left:8px"></span>
       </div>
     </div>
@@ -473,6 +484,7 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
       <span id="margin-toggle-label" style="font-size:11px;color:#aaa">Margin included in totals</span>
     </div>
     <div class="spend-totals" id="spend-totals"></div>
+    <div class="appliances-block" id="appliances-block" style="display:none"></div>
     <div class="card">
       <div style="overflow-x:auto">
         <table class="spend-table">
@@ -558,10 +570,14 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
       <div class="fg"><label class="flabel">Date</label><input class="finput" id="em-date" type="date"></div>
       <div class="fg"><label class="flabel">Ref #</label><input class="finput" id="em-ref" type="text"></div>
       <div class="fg" style="grid-column:1/-1"><label class="flabel">Upload / Replace Receipt</label><input class="finput" id="em-receipt" type="file" accept="image/*" style="padding:6px 8px"></div>
-      <div class="fg" style="grid-column:1/-1">
+      <div class="fg" style="grid-column:1/-1;display:flex;gap:24px;flex-wrap:wrap">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#555;user-select:none">
           <input type="checkbox" id="em-margin" style="width:15px;height:15px;cursor:pointer">
           Apply 10% margin to this expense
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#7d3c98;user-select:none" title="Tracking only — excluded from project totals and balance due">
+          <input type="checkbox" id="em-tracking" style="width:15px;height:15px;cursor:pointer" onchange="if(this.checked){document.getElementById('em-margin').checked=false;}">
+          Tracking Only (Appliances)
         </label>
       </div>
     </div>
@@ -745,7 +761,7 @@ function timeAgo(iso){
   return Math.floor(diff/86400)+'d ago';
 }
 function getActualByCategory(cat){
-  return state.spend.filter(s=>s.category===cat).reduce((sum,s)=>{
+  return state.spend.filter(s=>s.category===cat&&!s.trackingOnly).reduce((sum,s)=>{
     const margin=s.applyMargin!==false?s.cost*0.1:0;
     return sum+s.cost+margin;
   },0);
@@ -861,9 +877,9 @@ function renderDashboard(){
   const td=today();
   const daysLeft=Math.max(0,daysBetween(td,projectEnd));
   const totalBudget=state.budget.reduce((s,b)=>s+b.marcus,0);
-  const totalSpent=state.spend.reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+x.cost+m;},0);
+  const totalSpent=state.spend.filter(x=>!x.trackingOnly).reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+x.cost+m;},0);
   const spentPct=Math.min(100,Math.round(totalSpent/totalBudget*100));
-  const totalDue=state.spend.reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+x.cost+m;},0);
+  const totalDue=state.spend.filter(x=>!x.trackingOnly).reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+(x.paidBy==='Marcus'?m:x.cost+m);},0);
   const totalPayments=(state.payments||[]).reduce((s,p)=>s+p.amount,0);
   const balanceRemaining=totalDue-totalPayments;
 
@@ -1193,9 +1209,12 @@ function renderSpend(){
   // Apply/remove margin column visibility
   document.querySelectorAll('.margin-col').forEach(el=>el.style.display=showMargin?'':'none');
 
-  const totalCost=state.spend.reduce((s,x)=>s+x.cost,0);
-  const totalMargin=state.spend.reduce((s,x)=>x.applyMargin!==false?s+x.cost*0.1:s,0);
+  const projectSpend=state.spend.filter(x=>!x.trackingOnly);
+  const trackingSpend=state.spend.filter(x=>x.trackingOnly===true);
+  const totalCost=projectSpend.reduce((s,x)=>s+x.cost,0);
+  const totalMargin=projectSpend.reduce((s,x)=>x.applyMargin!==false?s+x.cost*0.1:s,0);
   const grandTotal=totalCost+totalMargin;
+  const appliancesTotal=trackingSpend.reduce((s,x)=>s+x.cost,0);
   const totalPayments=(state.payments||[]).reduce((s,p)=>s+p.amount,0);
   const remaining=grandTotal-totalPayments;
 
@@ -1205,30 +1224,43 @@ function renderSpend(){
     <div class="st-item"><div class="st-label">Grand Total (Gross Due)</div><div class="st-val" style="color:#c0392b">${fmt2(grandTotal)}</div></div>
     <div class="st-item"><div class="st-label">Payments Made</div><div class="st-val" style="color:#27ae60">− ${fmt2(totalPayments)}</div></div>
     <div class="st-item"><div class="st-label">${remaining<0?'Credit (Overpaid)':remaining===0?'Fully Paid':'Balance Remaining'}</div><div class="st-val" style="color:${remaining<0?'#27ae60':remaining===0?'#888':'#c0392b'}">${remaining<0?'−':''}${fmt2(Math.abs(remaining))}</div></div>
-    <div class="st-item"><div class="st-label">Entries</div><div class="st-val">${state.spend.length}</div></div>`;
+    <div class="st-item"><div class="st-label">Entries</div><div class="st-val">${projectSpend.length}${trackingSpend.length>0?` + ${trackingSpend.length} tracking`:''}</div></div>`;
+
+  // Appliances / tracking-only block
+  const appEl=document.getElementById('appliances-block');
+  if(appEl){
+    if(trackingSpend.length>0){
+      appEl.style.display='block';
+      appEl.innerHTML=`<div class="ab-title">🏠 Appliances (Tracking Only — not billed to project)</div>`+
+        trackingSpend.map(x=>`<div class="ab-row"><span>${x.desc||x.category}</span><span style="color:#7d3c98;font-weight:600">${fmt2(x.cost)}</span></div>`).join('')+
+        `<div class="ab-total"><span>Total Appliances</span><span>${fmt2(appliancesTotal)}</span></div>`;
+    } else {
+      appEl.style.display='none';
+    }
+  }
 
   const tbody=document.getElementById('spend-tbody');
   const empty=document.getElementById('spend-empty');
   if(!state.spend.length){tbody.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
   tbody.innerHTML=state.spend.map((s,i)=>{
-    const hasMargin=s.applyMargin!==false;const margin=hasMargin?s.cost*0.1:0;const total=s.cost+margin;const balDue=total;
+    const isTracking=s.trackingOnly===true;const hasMargin=!isTracking&&s.applyMargin!==false;const margin=hasMargin?s.cost*0.1:0;const total=s.cost+(isTracking?0:margin);const balDue=isTracking?null:(s.paidBy==='Marcus'?margin:s.cost+margin);
     const isPaid=s.isPaid===true;
     const editCount=s.editHistory?.length||0;
-    return `<tr class="${isPaid?'row-paid':''}">
+    return `<tr class="${isTracking?'row-tracking':isPaid?'row-paid':''}">
       <td style="color:#aaa;font-size:11px">${i+1}</td>
       <td style="font-size:12px;white-space:nowrap">${s.date||'—'}</td>
-      <td><span style="font-weight:600">${s.category}</span></td>
+      <td><span style="font-weight:600">${s.category}</span>${isTracking?'<span class="tracking-badge">tracking</span>':''}</td>
       <td style="color:#555">${s.desc||'—'}</td>
       <td class="right money">${fmt2(s.cost)}</td>
       <td class="right money margin-col" style="color:${hasMargin?'#888':'#bbb'};${showMargin?'':'display:none'}">${hasMargin?fmt2(margin):'—'}</td>
       <td class="right money" style="font-weight:700">${fmt2(total)}</td>
       <td><span class="paid-tag paid-${s.paidBy}">${s.paidBy}</span></td>
-      <td class="right money" style="color:${isPaid?'#27ae60':'#c0392b'};font-weight:700">${isPaid?'✓ Paid':fmt2(balDue)}</td>
+      <td class="right money" style="color:${isTracking?'#aaa':isPaid?'#27ae60':'#c0392b'};font-weight:700">${isTracking?'—':isPaid?`✓ Paid${s.paidOn?`<br><span style="font-size:10px;font-weight:400;color:#7dcea0">${s.paidOn}</span>`:''}`:fmt2(balDue)}</td>
       <td style="font-size:11px;color:#aaa">${s.ref||'—'}</td>
       <td><span class="paid-tag paid-${(s.addedBy||'').replace(/ /g,'')}" style="font-size:10px">${s.addedBy||'—'}</span></td>
       <td style="white-space:nowrap">
-        <button class="icon-btn ${isPaid?'is-paid':''}" onclick="toggleExpensePaid(${s.id})" title="${isPaid?'Mark unpaid':'Mark paid'}">✓</button>
+        ${!isTracking?`<button class="icon-btn ${isPaid?'is-paid':''}" onclick="toggleExpensePaid(${s.id})" title="${isPaid?'Mark unpaid':'Mark paid'}">✓</button>`:'<span style="display:inline-block;width:28px"></span>'}
         <button class="icon-btn" onclick="openEditModal(${s.id})" title="Edit expense">✏️</button>
         <button class="icon-btn ${s.hasReceipt?'has-receipt':''}" onclick="${s.hasReceipt?`viewReceipt(${s.id})`:`toast('No receipt attached yet','#888')`}" title="${s.hasReceipt?'View receipt':'No receipt'}">🧾</button>
         ${editCount>0?`<button class="icon-btn has-history" onclick="viewHistory(${s.id})" title="${editCount} edit${editCount>1?'s':''}">${editCount}✎</button>`:''}
@@ -1248,9 +1280,10 @@ window.toggleExpensePaid=function(id){
   const s=state.spend.find(x=>x.id===id);
   if(!s) return;
   s.isPaid=!s.isPaid;
-  addActivity(`Marked expense #${id} (${s.category}) as ${s.isPaid?'paid':'unpaid'}`);
+  s.paidOn=s.isPaid?new Date().toISOString().split('T')[0]:null;
+  addActivity(`Marked expense #${id} (${s.category}) as ${s.isPaid?`paid on ${s.paidOn}`:'unpaid'}`);
   saveState(); renderSpend(); renderDashboard();
-  toast(s.isPaid?`✓ Expense marked paid`:`Expense marked unpaid`, s.isPaid?'#27ae60':'#e67e22');
+  toast(s.isPaid?`✓ Marked paid · ${s.paidOn}`:`Expense marked unpaid`, s.isPaid?'#27ae60':'#e67e22');
 }
 
 window.addSpend=async function(){
@@ -1262,11 +1295,12 @@ window.addSpend=async function(){
   const date=document.getElementById('sp-date').value;
   const ref=document.getElementById('sp-ref').value.trim();
   const applyMargin=document.getElementById('sp-margin')?.checked!==false;
+  const trackingOnly=document.getElementById('sp-tracking')?.checked===true;
   const receiptFile=document.getElementById('sp-receipt').files[0];
   if(!cat||isNaN(cost)||cost<=0){toast('Enter a category and valid cost','#e74c3c');return;}
   const newId=state.nextSpendId++;
-  state.spend.push({id:newId,category:cat,desc,cost,paidBy,date,ref,applyMargin,addedBy:currentUser,addedAt:new Date().toISOString(),hasReceipt:false});
-  addActivity(`Added $${cost.toFixed(2)} expense for ${cat}${applyMargin?'':' (no margin)'}`);
+  state.spend.push({id:newId,category:cat,desc,cost,paidBy,date,ref,applyMargin:trackingOnly?false:applyMargin,trackingOnly,addedBy:currentUser,addedAt:new Date().toISOString(),hasReceipt:false});
+  addActivity(`Added $${cost.toFixed(2)} expense for ${cat}${trackingOnly?' (tracking only)':applyMargin?'':' (no margin)'}`);
   if(receiptFile) await uploadReceiptForId(newId,receiptFile);
   saveState();
   document.getElementById('sp-desc').value='';
@@ -1274,8 +1308,9 @@ window.addSpend=async function(){
   document.getElementById('sp-ref').value='';
   document.getElementById('sp-receipt').value='';
   if(document.getElementById('sp-margin')) document.getElementById('sp-margin').checked=true;
+  if(document.getElementById('sp-tracking')) document.getElementById('sp-tracking').checked=false;
   renderSpend();renderBudget();renderDashboard();
-  toast(`Added $${cost.toFixed(2)} to ${cat}`+(receiptFile?' with receipt':'')+(applyMargin?'':' · no margin'),'#27ae60');
+  toast(`Added $${cost.toFixed(2)} to ${cat}`+(receiptFile?' with receipt':'')+(trackingOnly?' · tracking only':applyMargin?'':' · no margin'),'#27ae60');
 }
 
 window.deleteSpend=function(id){
@@ -1343,7 +1378,8 @@ window.openEditModal=function(id){
   document.getElementById('em-cat').value=s.category||'';
   document.getElementById('em-justify').value='';
   document.getElementById('em-receipt').value='';
-  if(document.getElementById('em-margin')) document.getElementById('em-margin').checked = s.applyMargin !== false;
+  if(document.getElementById('em-margin')) document.getElementById('em-margin').checked = s.applyMargin !== false && !s.trackingOnly;
+  if(document.getElementById('em-tracking')) document.getElementById('em-tracking').checked = s.trackingOnly === true;
   // Populate category dropdown if needed
   const catSel=document.getElementById('em-cat');
   if(catSel.options.length===0){
@@ -1372,7 +1408,8 @@ window.saveEdit=async function(){
   const newPaid=document.getElementById('em-paid').value;
   const newRef=document.getElementById('em-ref').value.trim();
   const newCat=document.getElementById('em-cat').value;
-  const newMargin=document.getElementById('em-margin')?document.getElementById('em-margin').checked:true;
+  const newTracking=document.getElementById('em-tracking')?document.getElementById('em-tracking').checked:false;
+  const newMargin=newTracking?false:(document.getElementById('em-margin')?document.getElementById('em-margin').checked:true);
 
   if(isNaN(newCost)||newCost<=0){toast('Enter a valid cost','#e74c3c');return;}
 
@@ -1383,6 +1420,7 @@ window.saveEdit=async function(){
   if(newPaid!==s.paidBy) changes.push(`paidBy: ${s.paidBy} → ${newPaid}`);
   if(newRef!==s.ref) changes.push(`ref: ${s.ref||'—'} → ${newRef}`);
   if(newCat!==s.category) changes.push(`category: ${s.category} → ${newCat}`);
+  if(newTracking!==(s.trackingOnly===true)) changes.push(`tracking only: ${s.trackingOnly===true?'yes':'no'} → ${newTracking?'yes':'no'}`);
   if(newMargin!==(s.applyMargin!==false)) changes.push(`margin: ${s.applyMargin!==false?'applied':'removed'} → ${newMargin?'applied':'removed'}`);
 
   if(changes.length===0 && !document.getElementById('em-receipt').files[0]){
@@ -1399,7 +1437,7 @@ window.saveEdit=async function(){
   });
 
   // Apply changes
-  s.date=newDate; s.desc=newDesc; s.cost=newCost; s.paidBy=newPaid; s.ref=newRef; s.category=newCat; s.applyMargin=newMargin;
+  s.date=newDate; s.desc=newDesc; s.cost=newCost; s.paidBy=newPaid; s.ref=newRef; s.category=newCat; s.applyMargin=newMargin; s.trackingOnly=newTracking;
 
   // Handle receipt upload
   const receiptFile=document.getElementById('em-receipt').files[0];
@@ -1508,7 +1546,7 @@ function renderPayments(){
   if(dateInput&&!dateInput.value) dateInput.value=today().toISOString().split('T')[0];
   const payments=state.payments||[];
   const totalPaid=payments.reduce((s,p)=>s+p.amount,0);
-  const grossDue=state.spend.reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+x.cost+m;},0);
+  const grossDue=state.spend.filter(x=>!x.trackingOnly).reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+(x.paidBy==='Marcus'?m:x.cost+m);},0);
   const remaining=grossDue-totalPaid;
   document.getElementById('pay-totals').innerHTML=`
     <div class="st-item"><div class="st-label">Grand Total (Gross Due)</div><div class="st-val" style="color:#c0392b">${fmt2(grossDue)}</div></div>
