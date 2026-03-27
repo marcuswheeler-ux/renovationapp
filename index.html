@@ -1066,7 +1066,8 @@ function renderGantt(){
   </div>`;
 
   const actClass={Decision:'bar-act-decision',Construction:'bar-act-construction',Finish:'bar-act-finish'};
-  const rows=state.tasks.map(t=>{
+  const sorted=[...state.tasks].sort((a,b)=>a.start<b.start?-1:a.start>b.start?1:a.id-b.id);
+  const rows=sorted.map(t=>{
     const ts=parseDate(t.start),te=parseDate(t.end);
     const leftPct=Math.max(0,daysBetween(GANTT_START,ts)/TOTAL_DAYS*100);
     const widthPct=Math.max(1,daysBetween(ts,te)/TOTAL_DAYS*100);
