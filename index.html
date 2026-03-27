@@ -412,9 +412,9 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
               <th class="right">Anthony Estimate</th>
               <th class="right">Anticipated</th>
               <th class="right">Actual Spent</th>
-              <th class="right" style="min-width:100px">vs Marcus</th>
-              <th class="right">vs Anthony</th>
-              <th class="right">vs Anticipated</th>
+              <th class="right" style="min-width:120px;white-space:nowrap">vs Marcus</th>
+              <th class="right" style="min-width:120px;white-space:nowrap">vs Anthony</th>
+              <th class="right" style="min-width:120px;white-space:nowrap">vs Anticipated</th>
               <th>% to Anticipated</th>
               <th>Notes</th>
             </tr>
@@ -1168,9 +1168,9 @@ function renderBudget(){
       </td>
       <td class="right money">${fmt(b.marcus)}</td><td class="right money">${fmt(b.anthony)}</td>
       <td class="right money">${fmt(b.anticipated)}</td><td class="right money">${fmt(actual)}</td>
-      <td class="right" style="min-width:100px;white-space:nowrap"><span class="${vC(varM)}">${actual>0?vS(varM)+fmt(varM):'—'}</span></td>
-      <td class="right"><span class="${vC(varA)}">${actual>0?vS(varA)+fmt(varA):'—'}</span></td>
-      <td class="right"><span class="${vC(varAnt)}">${actual>0?vS(varAnt)+fmt(varAnt):'—'}</span></td>
+      <td class="right" style="min-width:120px;white-space:nowrap"><span class="${vC(varM)}">${actual>0?vS(varM)+fmt(varM):'—'}</span></td>
+      <td class="right" style="min-width:120px;white-space:nowrap"><span class="${vC(varA)}">${actual>0?vS(varA)+fmt(varA):'—'}</span></td>
+      <td class="right" style="min-width:120px;white-space:nowrap"><span class="${vC(varAnt)}">${actual>0?vS(varAnt)+fmt(varAnt):'—'}</span></td>
       <td><div class="miniprog"><div class="miniprog-fill ${pct>100?'over':''}" style="width:${Math.min(100,pct)}%"></div></div><div style="font-size:10px;color:#aaa;margin-top:2px">${pct}%</div></td>
       <td style="font-size:11px;color:#aaa">${b.notes||''}</td>
     </tr>`;
@@ -1183,9 +1183,9 @@ function renderBudget(){
     <tr class="trow">
       <td>TOTAL</td><td class="right">${fmt(totM)}</td><td class="right">${fmt(totA)}</td>
       <td class="right">${fmt(totAnt)}</td><td class="right">${fmt(totAct)}</td>
-      <td class="right" style="min-width:100px;white-space:nowrap"><span class="${vC(vM)}">${totAct>0?vS(vM)+fmt(vM):'—'}</span></td>
-      <td class="right"><span class="${vC(vA)}">${totAct>0?vS(vA)+fmt(vA):'—'}</span></td>
-      <td class="right"><span class="${vC(vAnt)}">${totAct>0?vS(vAnt)+fmt(vAnt):'—'}</span></td>
+      <td class="right" style="min-width:120px;white-space:nowrap"><span class="${vC(vM)}">${totAct>0?vS(vM)+fmt(vM):'—'}</span></td>
+      <td class="right" style="min-width:120px;white-space:nowrap"><span class="${vC(vA)}">${totAct>0?vS(vA)+fmt(vA):'—'}</span></td>
+      <td class="right" style="min-width:120px;white-space:nowrap"><span class="${vC(vAnt)}">${totAct>0?vS(vAnt)+fmt(vAnt):'—'}</span></td>
       <td></td><td></td>
     </tr>`;
 }
