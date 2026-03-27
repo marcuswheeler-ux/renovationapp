@@ -458,8 +458,8 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
           <input class="finput" id="sp-ref" type="text" placeholder="Optional">
         </div>
         <div class="fg">
-          <label class="flabel">Receipt (optional)</label>
-          <input class="finput" id="sp-receipt" type="file" accept="image/*" style="padding:6px 8px">
+          <label class="flabel">Attachments (optional — multiple allowed)</label>
+          <input class="finput" id="sp-receipt" type="file" accept="image/*,application/pdf" multiple style="padding:6px 8px">
         </div>
       </div>
       <div class="form-row">
@@ -569,7 +569,7 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
       <div class="fg"><label class="flabel">Paid By</label><select class="fselect" id="em-paid"><option>Marcus</option><option>Anthony</option></select></div>
       <div class="fg"><label class="flabel">Date</label><input class="finput" id="em-date" type="date"></div>
       <div class="fg"><label class="flabel">Ref #</label><input class="finput" id="em-ref" type="text"></div>
-      <div class="fg" style="grid-column:1/-1"><label class="flabel">Upload / Replace Receipt</label><input class="finput" id="em-receipt" type="file" accept="image/*" style="padding:6px 8px"></div>
+      <div class="fg" style="grid-column:1/-1"><label class="flabel">Add Attachments (multiple allowed)</label><input class="finput" id="em-receipt" type="file" accept="image/*,application/pdf" multiple style="padding:6px 8px"></div>
       <div class="fg" style="grid-column:1/-1;display:flex;gap:24px;flex-wrap:wrap">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#555;user-select:none">
           <input type="checkbox" id="em-margin" style="width:15px;height:15px;cursor:pointer">
@@ -604,11 +604,11 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
 
 <!-- RECEIPT MODAL -->
 <div class="emodal-bg hidden" id="receipt-modal">
-  <div class="emodal" style="max-width:700px">
-    <h3>🧾 Receipt</h3>
+  <div class="emodal" style="max-width:720px;max-height:88vh;display:flex;flex-direction:column">
+    <h3>🧾 Attachments</h3>
     <div class="emodal-sub" id="receipt-modal-title"></div>
-    <div id="receipt-modal-body" style="margin:16px 0"></div>
-    <button class="btn" style="background:#f0f0f0;color:#666" onclick="document.getElementById('receipt-modal').classList.add('hidden')">Close</button>
+    <div id="receipt-modal-body" style="margin:16px 0;overflow-y:auto;flex:1"></div>
+    <button class="btn" style="background:#f0f0f0;color:#666;flex-shrink:0" onclick="document.getElementById('receipt-modal').classList.add('hidden')">Close</button>
   </div>
 </div>
 
@@ -1268,7 +1268,7 @@ function renderSpend(){
       <td style="white-space:nowrap">
         ${!isTracking?`<button class="icon-btn ${isPaid?'is-paid':''}" onclick="toggleExpensePaid(${s.id})" title="${isPaid?'Mark unpaid':'Mark paid'}">✓</button>`:'<span style="display:inline-block;width:28px"></span>'}
         <button class="icon-btn" onclick="openEditModal(${s.id})" title="Edit expense">✏️</button>
-        <button class="icon-btn ${s.hasReceipt?'has-receipt':''}" onclick="${s.hasReceipt?`viewReceipt(${s.id})`:`toast('No receipt attached yet','#888')`}" title="${s.hasReceipt?'View receipt':'No receipt'}">🧾</button>
+        <button class="icon-btn ${s.hasReceipt?'has-receipt':''}" onclick="${s.hasReceipt?`viewReceipt(${s.id})`:`toast('No attachments yet','#888')`}" title="${s.hasReceipt?`${s.receiptCount||1} attachment${(s.receiptCount||1)>1?'s':''}  — click to view`:'No attachments'}">🧾${(s.receiptCount||0)>1?`<span style="font-size:9px;font-weight:800;vertical-align:super">${s.receiptCount}</span>`:''}</button>
         ${editCount>0?`<button class="icon-btn has-history" onclick="viewHistory(${s.id})" title="${editCount} edit${editCount>1?'s':''}">${editCount}✎</button>`:''}
         <button class="del-btn" onclick="deleteSpend(${s.id})" title="Delete">✕</button>
       </td>
@@ -1302,12 +1302,12 @@ window.addSpend=async function(){
   const ref=document.getElementById('sp-ref').value.trim();
   const applyMargin=document.getElementById('sp-margin')?.checked!==false;
   const trackingOnly=document.getElementById('sp-tracking')?.checked===true;
-  const receiptFile=document.getElementById('sp-receipt').files[0];
+  const receiptFiles=document.getElementById('sp-receipt').files;
   if(!cat||isNaN(cost)||cost<=0){toast('Enter a category and valid cost','#e74c3c');return;}
   const newId=state.nextSpendId++;
-  state.spend.push({id:newId,category:cat,desc,cost,paidBy,date,ref,applyMargin:trackingOnly?false:applyMargin,trackingOnly,addedBy:currentUser,addedAt:new Date().toISOString(),hasReceipt:false});
+  state.spend.push({id:newId,category:cat,desc,cost,paidBy,date,ref,applyMargin:trackingOnly?false:applyMargin,trackingOnly,addedBy:currentUser,addedAt:new Date().toISOString(),hasReceipt:false,receiptCount:0});
   addActivity(`Added $${cost.toFixed(2)} expense for ${cat}${trackingOnly?' (tracking only)':applyMargin?'':' (no margin)'}`);
-  if(receiptFile) await uploadReceiptForId(newId,receiptFile);
+  if(receiptFiles.length) await uploadReceiptForId(newId,receiptFiles);
   saveState();
   document.getElementById('sp-desc').value='';
   document.getElementById('sp-cost').value='';
@@ -1316,7 +1316,7 @@ window.addSpend=async function(){
   if(document.getElementById('sp-margin')) document.getElementById('sp-margin').checked=true;
   if(document.getElementById('sp-tracking')) document.getElementById('sp-tracking').checked=false;
   renderSpend();renderBudget();renderDashboard();
-  toast(`Added $${cost.toFixed(2)} to ${cat}`+(receiptFile?' with receipt':'')+(trackingOnly?' · tracking only':applyMargin?'':' · no margin'),'#27ae60');
+  toast(`Added $${cost.toFixed(2)} to ${cat}`+(receiptFiles.length?` · ${receiptFiles.length} attachment${receiptFiles.length>1?'s':''}`:'')+( trackingOnly?' · tracking only':applyMargin?'':' · no margin'),'#27ae60');
 }
 
 window.deleteSpend=function(id){
@@ -1354,19 +1354,62 @@ function compressImage(file, maxWidth=800, quality=0.65){
   });
 }
 
-// Upload (or replace) receipt for a given spend ID
-async function uploadReceiptForId(id, file){
+// Upload one or more attachments for a given spend ID (appends to existing)
+async function uploadReceiptForId(id, files){
+  // Accept either a single File or a FileList/array
+  const fileArr=files instanceof FileList?Array.from(files):(Array.isArray(files)?files:[files]);
+  if(!fileArr.length) return false;
   try{
-    const base64=await compressImage(file);
-    await setDoc(receiptDoc(id),{data:base64,uploadedBy:currentUser,uploadedAt:new Date().toISOString()});
+    // Load existing attachments (migrate old single-image format if needed)
+    const snap=await getDoc(receiptDoc(id));
+    let existing=[];
+    if(snap.exists()){
+      const d=snap.data();
+      if(d.files) existing=d.files;
+      else if(d.data) existing=[{data:d.data,name:'receipt',type:'image',uploadedBy:d.uploadedBy||'?',uploadedAt:d.uploadedAt||''}];
+    }
+    // Compress & append each new file
+    for(const file of fileArr){
+      const isPdf=file.type==='application/pdf';
+      let data;
+      if(isPdf){
+        // Store PDF as base64 directly (no canvas compression)
+        data=await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsDataURL(file);});
+      } else {
+        data=await compressImage(file);
+      }
+      existing.push({data,name:file.name||'attachment',type:isPdf?'pdf':'image',uploadedBy:currentUser,uploadedAt:new Date().toISOString()});
+    }
+    await setDoc(receiptDoc(id),{files:existing});
     const entry=state.spend.find(x=>x.id===id);
-    if(entry) entry.hasReceipt=true;
-    // Note: we call saveState after this in the callers
+    if(entry){entry.hasReceipt=true;entry.receiptCount=existing.length;}
     return true;
   } catch(err){
-    console.error('Receipt upload failed',err);
-    toast('Receipt upload failed','#e74c3c');
+    console.error('Attachment upload failed',err);
+    toast('Attachment upload failed','#e74c3c');
     return false;
+  }
+}
+
+// Delete a single attachment by index
+window.deleteAttachment=async function(id, idx){
+  if(!confirm('Remove this attachment?')) return;
+  try{
+    const snap=await getDoc(receiptDoc(id));
+    if(!snap.exists()) return;
+    const d=snap.data();
+    let files=d.files?[...d.files]:(d.data?[{data:d.data,name:'receipt',type:'image',uploadedBy:d.uploadedBy,uploadedAt:d.uploadedAt}]:[]);
+    files.splice(idx,1);
+    await setDoc(receiptDoc(id),{files});
+    const entry=state.spend.find(x=>x.id===id);
+    if(entry){entry.hasReceipt=files.length>0;entry.receiptCount=files.length;}
+    saveState();renderSpend();
+    // Refresh modal
+    if(files.length>0) viewReceipt(id);
+    else document.getElementById('receipt-modal').classList.add('hidden');
+    toast('Attachment removed','#e67e22');
+  } catch(err){
+    toast('Failed to remove attachment','#e74c3c');
   }
 }
 
@@ -1446,8 +1489,8 @@ window.saveEdit=async function(){
   s.date=newDate; s.desc=newDesc; s.cost=newCost; s.paidBy=newPaid; s.ref=newRef; s.category=newCat; s.applyMargin=newMargin; s.trackingOnly=newTracking;
 
   // Handle receipt upload
-  const receiptFile=document.getElementById('em-receipt').files[0];
-  if(receiptFile) await uploadReceiptForId(id,receiptFile);
+  const receiptFiles=document.getElementById('em-receipt').files;
+  if(receiptFiles.length) await uploadReceiptForId(id,receiptFiles);
 
   addActivity(`Edited expense #${id} (${newCat}): ${changes.join('; ')||'receipt updated'}`);
   saveState();
@@ -1456,24 +1499,36 @@ window.saveEdit=async function(){
   toast('Expense updated','#27ae60');
 }
 
-// View receipt image from Firestore
+// View attachments from Firestore
 window.viewReceipt=async function(id){
   const s=state.spend.find(x=>x.id===id);
-  document.getElementById('receipt-modal-title').textContent=`Receipt — ${s?s.category:''} #${id}`;
+  document.getElementById('receipt-modal-title').textContent=`Attachments — ${s?s.category:''} · ${s?s.desc||'':''} #${id}`;
   document.getElementById('receipt-modal-body').innerHTML=`<div style="color:#aaa;padding:24px;text-align:center">Loading…</div>`;
   document.getElementById('receipt-modal').classList.remove('hidden');
   try{
     const snap=await getDoc(receiptDoc(id));
-    if(snap.exists()&&snap.data().data){
-      const d=snap.data();
-      document.getElementById('receipt-modal-body').innerHTML=
-        `<img class="receipt-img" src="${d.data}" alt="Receipt">
-         <div style="font-size:11px;color:#aaa;margin-top:8px">Uploaded by ${d.uploadedBy||'?'} on ${d.uploadedAt?new Date(d.uploadedAt).toLocaleString():''}</div>`;
-    } else {
-      document.getElementById('receipt-modal-body').innerHTML=`<div style="color:#aaa;padding:24px;text-align:center">No receipt found.</div>`;
-    }
+    if(!snap.exists()){document.getElementById('receipt-modal-body').innerHTML=`<div style="color:#aaa;padding:24px;text-align:center">No attachments found.</div>`;return;}
+    const d=snap.data();
+    // Normalise: migrate old single-image format
+    const files=d.files?d.files:(d.data?[{data:d.data,name:'receipt',type:'image',uploadedBy:d.uploadedBy||'?',uploadedAt:d.uploadedAt||''}]:[]);
+    if(!files.length){document.getElementById('receipt-modal-body').innerHTML=`<div style="color:#aaa;padding:24px;text-align:center">No attachments found.</div>`;return;}
+    document.getElementById('receipt-modal-body').innerHTML=files.map((f,i)=>`
+      <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #f0f0f0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:12px;font-weight:700;color:#555">${i+1} of ${files.length} · ${f.name||'attachment'}</div>
+          <button class="btn btn-sm" style="background:#fdecea;color:#c0392b;border:none" onclick="deleteAttachment(${id},${i})">🗑 Remove</button>
+        </div>
+        ${f.type==='pdf'
+          ?`<div style="background:#f8f9fb;border:1px solid #e0e0e0;border-radius:8px;padding:16px;text-align:center">
+               <div style="font-size:32px;margin-bottom:8px">📄</div>
+               <div style="font-size:13px;color:#555;margin-bottom:12px">${f.name}</div>
+               <a href="${f.data}" download="${f.name}" class="btn btn-blue btn-sm">⬇ Download PDF</a>
+             </div>`
+          :`<img class="receipt-img" src="${f.data}" alt="${f.name}">`}
+        <div style="font-size:11px;color:#aaa;margin-top:6px">Uploaded by ${f.uploadedBy||'?'} · ${f.uploadedAt?new Date(f.uploadedAt).toLocaleString():''}</div>
+      </div>`).join('');
   } catch(err){
-    document.getElementById('receipt-modal-body').innerHTML=`<div style="color:#e74c3c;padding:24px;text-align:center">Failed to load receipt.</div>`;
+    document.getElementById('receipt-modal-body').innerHTML=`<div style="color:#e74c3c;padding:24px;text-align:center">Failed to load attachments.</div>`;
   }
 }
 
