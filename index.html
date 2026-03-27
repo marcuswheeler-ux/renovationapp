@@ -849,7 +849,7 @@ function renderDashboard(){
   const spentPct=Math.min(100,Math.round(totalSpent/totalBudget*100));
   const totalDue=state.spend.reduce((s,x)=>s+(x.paidBy==='Marcus'?x.cost*0.1:x.cost*1.1),0);
   const totalPayments=(state.payments||[]).reduce((s,p)=>s+p.amount,0);
-  const balanceRemaining=Math.max(0,totalDue-totalPayments);
+  const balanceRemaining=totalDue-totalPayments;
 
   document.getElementById('dash-stats').innerHTML=`
     <div class="stat-card blue">
@@ -870,8 +870,8 @@ function renderDashboard(){
       <div class="stat-sub">${spentPct}% of Marcus budget (${fmt(totalBudget)})</div>
     </div>
     <div class="stat-card purple">
-      <div class="stat-value">${fmt(balanceRemaining)}</div>
-      <div class="stat-label">Balance Due Anthony</div>
+      <div class="stat-value" style="color:${balanceRemaining<0?'#27ae60':balanceRemaining===0?'#888':'inherit'}">${balanceRemaining<0?'−':''}${fmt(Math.abs(balanceRemaining))}</div>
+      <div class="stat-label">${balanceRemaining<0?'Credit (Overpaid)':balanceRemaining===0?'Fully Paid':'Balance Due Anthony'}</div>
       <div class="stat-sub">${fmt(totalPayments)} paid · ${blocked} blocked task${blocked!==1?'s':''}</div>
     </div>`;
 
@@ -1181,7 +1181,7 @@ function renderSpend(){
   const totalMargin=state.spend.reduce((s,x)=>s+x.cost*0.1,0);
   const totalDue=state.spend.reduce((s,x)=>s+(x.paidBy==='Marcus'?x.cost*0.1:x.cost*1.1),0);
   const totalPayments=(state.payments||[]).reduce((s,p)=>s+p.amount,0);
-  const remaining=Math.max(0,totalDue-totalPayments);
+  const remaining=totalDue-totalPayments;
   const grandTotal=showMargin?totalCost+totalMargin:totalCost;
 
   document.getElementById('spend-totals').innerHTML=`
@@ -1190,7 +1190,7 @@ function renderSpend(){
     <div class="st-item"><div class="st-label">${showMargin?'Grand Total':'Raw Total'}</div><div class="st-val">${fmt2(grandTotal)}</div></div>
     <div class="st-item"><div class="st-label">Gross Due Anthony</div><div class="st-val" style="color:#c0392b">${fmt2(totalDue)}</div></div>
     <div class="st-item"><div class="st-label">Payments Made</div><div class="st-val" style="color:#27ae60">− ${fmt2(totalPayments)}</div></div>
-    <div class="st-item"><div class="st-label">Balance Remaining</div><div class="st-val" style="color:${remaining>0?'#c0392b':'#27ae60'}">${fmt2(remaining)}</div></div>
+    <div class="st-item"><div class="st-label">${remaining<0?'Credit (Overpaid)':remaining===0?'Fully Paid':'Balance Remaining'}</div><div class="st-val" style="color:${remaining<0?'#27ae60':remaining===0?'#888':'#c0392b'}">${remaining<0?'−':''}${fmt2(Math.abs(remaining))}</div></div>
     <div class="st-item"><div class="st-label">Entries</div><div class="st-val">${state.spend.length}</div></div>`;
 
   const tbody=document.getElementById('spend-tbody');
@@ -1479,11 +1479,11 @@ function renderPayments(){
   const payments=state.payments||[];
   const totalPaid=payments.reduce((s,p)=>s+p.amount,0);
   const totalDue=state.spend.reduce((s,x)=>s+(x.paidBy==='Marcus'?x.cost*0.1:x.cost*1.1),0);
-  const remaining=Math.max(0,totalDue-totalPaid);
+  const remaining=totalDue-totalPaid;
   document.getElementById('pay-totals').innerHTML=`
     <div class="st-item"><div class="st-label">Gross Due Anthony</div><div class="st-val" style="color:#c0392b">${fmt2(totalDue)}</div></div>
     <div class="st-item"><div class="st-label">Total Paid</div><div class="st-val" style="color:#27ae60">${fmt2(totalPaid)}</div></div>
-    <div class="st-item"><div class="st-label">Balance Remaining</div><div class="st-val" style="color:${remaining>0?'#c0392b':'#27ae60'}">${fmt2(remaining)}</div></div>
+    <div class="st-item"><div class="st-label">${remaining<0?'Credit (Overpaid)':remaining===0?'Fully Paid':'Balance Remaining'}</div><div class="st-val" style="color:${remaining<0?'#27ae60':remaining===0?'#888':'#c0392b'}">${remaining<0?'−':''}${fmt2(Math.abs(remaining))}</div></div>
     <div class="st-item"><div class="st-label">Payments Made</div><div class="st-val">${payments.length}</div></div>`;
   const tbody=document.getElementById('pay-tbody');
   const empty=document.getElementById('pay-empty');
