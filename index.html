@@ -470,8 +470,8 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
         </label>
         <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:#7d3c98;margin-left:16px;user-select:none" title="Tracked for reference only — excluded from project totals and balance due">
           <input type="checkbox" id="sp-tracking" style="width:15px;height:15px;cursor:pointer" onchange="if(this.checked){document.getElementById('sp-margin').checked=false;}">
-          Tracking Only (Appliances)
-        </label>
+          Tracking Only
+</label>
         <span id="margin-preview" style="font-size:12px;color:#888;margin-left:8px"></span>
       </div>
     </div>
@@ -577,8 +577,8 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
         </label>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#7d3c98;user-select:none" title="Tracking only — excluded from project totals and balance due">
           <input type="checkbox" id="em-tracking" style="width:15px;height:15px;cursor:pointer" onchange="if(this.checked){document.getElementById('em-margin').checked=false;}">
-          Tracking Only (Appliances)
-        </label>
+          Tracking Only
+</label>
       </div>
     </div>
     <div style="margin-bottom:18px">
@@ -1238,9 +1238,9 @@ function renderSpend(){
   if(appEl){
     if(trackingSpend.length>0){
       appEl.style.display='block';
-      appEl.innerHTML=`<div class="ab-title">🏠 Appliances (Tracking Only — not billed to project)</div>`+
+      appEl.innerHTML=`<div class="ab-title">📋 Tracking Only — not billed to project</div>`+
         trackingSpend.map(x=>`<div class="ab-row"><span>${x.desc||x.category}</span><span style="color:#7d3c98;font-weight:600">${fmt2(x.cost)}</span></div>`).join('')+
-        `<div class="ab-total"><span>Total Appliances</span><span>${fmt2(appliancesTotal)}</span></div>`;
+        `<div class="ab-total"><span>Tracking Total</span><span>${fmt2(appliancesTotal)}</span></div>`;
     } else {
       appEl.style.display='none';
     }
