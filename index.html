@@ -454,6 +454,10 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
       </div>
       <div class="form-row">
         <button class="btn btn-green" onclick="addSpend()">+ Add Expense</button>
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:#555;margin-left:12px;user-select:none">
+          <input type="checkbox" id="sp-margin" checked style="width:15px;height:15px;cursor:pointer">
+          Apply 10% margin
+        </label>
         <span id="margin-preview" style="font-size:12px;color:#888;margin-left:8px"></span>
       </div>
     </div>
@@ -551,6 +555,12 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
       <div class="fg"><label class="flabel">Date</label><input class="finput" id="em-date" type="date"></div>
       <div class="fg"><label class="flabel">Ref #</label><input class="finput" id="em-ref" type="text"></div>
       <div class="fg" style="grid-column:1/-1"><label class="flabel">Upload / Replace Receipt</label><input class="finput" id="em-receipt" type="file" accept="image/*" style="padding:6px 8px"></div>
+      <div class="fg" style="grid-column:1/-1">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#555;user-select:none">
+          <input type="checkbox" id="em-margin" style="width:15px;height:15px;cursor:pointer">
+          Apply 10% margin to this expense
+        </label>
+      </div>
     </div>
     <div style="margin-bottom:18px">
       <label class="justify-label">⚠️ Reason for change (required)</label>
@@ -732,7 +742,10 @@ function timeAgo(iso){
   return Math.floor(diff/86400)+'d ago';
 }
 function getActualByCategory(cat){
-  return state.spend.filter(s=>s.category===cat).reduce((sum,s)=>sum+s.cost*1.1,0);
+  return state.spend.filter(s=>s.category===cat).reduce((sum,s)=>{
+    const margin=s.applyMargin!==false?s.cost*0.1:0;
+    return sum+s.cost+margin;
+  },0);
 }
 
 function toast(msg,color){
@@ -845,9 +858,9 @@ function renderDashboard(){
   const td=today();
   const daysLeft=Math.max(0,daysBetween(td,projectEnd));
   const totalBudget=state.budget.reduce((s,b)=>s+b.marcus,0);
-  const totalSpent=state.spend.reduce((s,x)=>s+x.cost*1.1,0);
+  const totalSpent=state.spend.reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+x.cost+m;},0);
   const spentPct=Math.min(100,Math.round(totalSpent/totalBudget*100));
-  const totalDue=state.spend.reduce((s,x)=>s+(x.paidBy==='Marcus'?x.cost*0.1:x.cost*1.1),0);
+  const totalDue=state.spend.reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+(x.paidBy==='Marcus'?m:x.cost+m);},0);
   const totalPayments=(state.payments||[]).reduce((s,p)=>s+p.amount,0);
   const balanceRemaining=totalDue-totalPayments;
 
@@ -1178,8 +1191,8 @@ function renderSpend(){
   document.querySelectorAll('.margin-col').forEach(el=>el.style.display=showMargin?'':'none');
 
   const totalCost=state.spend.reduce((s,x)=>s+x.cost,0);
-  const totalMargin=state.spend.reduce((s,x)=>s+x.cost*0.1,0);
-  const totalDue=state.spend.reduce((s,x)=>s+(x.paidBy==='Marcus'?x.cost*0.1:x.cost*1.1),0);
+  const totalMargin=state.spend.reduce((s,x)=>x.applyMargin!==false?s+x.cost*0.1:s,0);
+  const totalDue=state.spend.reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+(x.paidBy==='Marcus'?m:x.cost+m);},0);
   const totalPayments=(state.payments||[]).reduce((s,p)=>s+p.amount,0);
   const remaining=totalDue-totalPayments;
   const grandTotal=showMargin?totalCost+totalMargin:totalCost;
@@ -1198,7 +1211,7 @@ function renderSpend(){
   if(!state.spend.length){tbody.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
   tbody.innerHTML=state.spend.map((s,i)=>{
-    const margin=s.cost*0.1,total=showMargin?s.cost+margin:s.cost,balDue=s.paidBy==='Marcus'?margin:s.cost+margin;
+    const hasMargin=s.applyMargin!==false;const margin=hasMargin?s.cost*0.1:0;const total=s.cost+margin;const balDue=s.paidBy==='Marcus'?margin:s.cost+margin;
     const editCount=s.editHistory?.length||0;
     return `<tr>
       <td style="color:#aaa;font-size:11px">${i+1}</td>
@@ -1206,7 +1219,7 @@ function renderSpend(){
       <td><span style="font-weight:600">${s.category}</span></td>
       <td style="color:#555">${s.desc||'—'}</td>
       <td class="right money">${fmt2(s.cost)}</td>
-      <td class="right money margin-col" style="color:#888;${showMargin?'':'display:none'}">${fmt2(margin)}</td>
+      <td class="right money margin-col" style="color:${hasMargin?'#888':'#bbb'};${showMargin?'':'display:none'}">${hasMargin?fmt2(margin):'—'}</td>
       <td class="right money" style="font-weight:700">${fmt2(total)}</td>
       <td><span class="paid-tag paid-${s.paidBy}">${s.paidBy}</span></td>
       <td class="right money" style="color:#c0392b;font-weight:700">${fmt2(balDue)}</td>
@@ -1236,19 +1249,21 @@ window.addSpend=async function(){
   const paidBy=document.getElementById('sp-paid').value;
   const date=document.getElementById('sp-date').value;
   const ref=document.getElementById('sp-ref').value.trim();
+  const applyMargin=document.getElementById('sp-margin')?.checked!==false;
   const receiptFile=document.getElementById('sp-receipt').files[0];
   if(!cat||isNaN(cost)||cost<=0){toast('Enter a category and valid cost','#e74c3c');return;}
   const newId=state.nextSpendId++;
-  state.spend.push({id:newId,category:cat,desc,cost,paidBy,date,ref,addedBy:currentUser,addedAt:new Date().toISOString(),hasReceipt:false});
-  addActivity(`Added $${cost.toFixed(2)} expense for ${cat}`);
+  state.spend.push({id:newId,category:cat,desc,cost,paidBy,date,ref,applyMargin,addedBy:currentUser,addedAt:new Date().toISOString(),hasReceipt:false});
+  addActivity(`Added $${cost.toFixed(2)} expense for ${cat}${applyMargin?'':' (no margin)'}`);
   if(receiptFile) await uploadReceiptForId(newId,receiptFile);
   saveState();
   document.getElementById('sp-desc').value='';
   document.getElementById('sp-cost').value='';
   document.getElementById('sp-ref').value='';
   document.getElementById('sp-receipt').value='';
+  if(document.getElementById('sp-margin')) document.getElementById('sp-margin').checked=true;
   renderSpend();renderBudget();renderDashboard();
-  toast(`Added $${cost.toFixed(2)} to ${cat}`+(receiptFile?' with receipt':''),'#27ae60');
+  toast(`Added $${cost.toFixed(2)} to ${cat}`+(receiptFile?' with receipt':'')+(applyMargin?'':' · no margin'),'#27ae60');
 }
 
 window.deleteSpend=function(id){
@@ -1316,6 +1331,7 @@ window.openEditModal=function(id){
   document.getElementById('em-cat').value=s.category||'';
   document.getElementById('em-justify').value='';
   document.getElementById('em-receipt').value='';
+  if(document.getElementById('em-margin')) document.getElementById('em-margin').checked = s.applyMargin !== false;
   // Populate category dropdown if needed
   const catSel=document.getElementById('em-cat');
   if(catSel.options.length===0){
@@ -1344,6 +1360,7 @@ window.saveEdit=async function(){
   const newPaid=document.getElementById('em-paid').value;
   const newRef=document.getElementById('em-ref').value.trim();
   const newCat=document.getElementById('em-cat').value;
+  const newMargin=document.getElementById('em-margin')?document.getElementById('em-margin').checked:true;
 
   if(isNaN(newCost)||newCost<=0){toast('Enter a valid cost','#e74c3c');return;}
 
@@ -1354,6 +1371,7 @@ window.saveEdit=async function(){
   if(newPaid!==s.paidBy) changes.push(`paidBy: ${s.paidBy} → ${newPaid}`);
   if(newRef!==s.ref) changes.push(`ref: ${s.ref||'—'} → ${newRef}`);
   if(newCat!==s.category) changes.push(`category: ${s.category} → ${newCat}`);
+  if(newMargin!==(s.applyMargin!==false)) changes.push(`margin: ${s.applyMargin!==false?'applied':'removed'} → ${newMargin?'applied':'removed'}`);
 
   if(changes.length===0 && !document.getElementById('em-receipt').files[0]){
     toast('No changes detected','#888');closeEditModal();return;
@@ -1369,7 +1387,7 @@ window.saveEdit=async function(){
   });
 
   // Apply changes
-  s.date=newDate; s.desc=newDesc; s.cost=newCost; s.paidBy=newPaid; s.ref=newRef; s.category=newCat;
+  s.date=newDate; s.desc=newDesc; s.cost=newCost; s.paidBy=newPaid; s.ref=newRef; s.category=newCat; s.applyMargin=newMargin;
 
   // Handle receipt upload
   const receiptFile=document.getElementById('em-receipt').files[0];
@@ -1478,7 +1496,7 @@ function renderPayments(){
   if(dateInput&&!dateInput.value) dateInput.value=today().toISOString().split('T')[0];
   const payments=state.payments||[];
   const totalPaid=payments.reduce((s,p)=>s+p.amount,0);
-  const totalDue=state.spend.reduce((s,x)=>s+(x.paidBy==='Marcus'?x.cost*0.1:x.cost*1.1),0);
+  const totalDue=state.spend.reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+(x.paidBy==='Marcus'?m:x.cost+m);},0);
   const remaining=totalDue-totalPaid;
   document.getElementById('pay-totals').innerHTML=`
     <div class="st-item"><div class="st-label">Gross Due Anthony</div><div class="st-val" style="color:#c0392b">${fmt2(totalDue)}</div></div>
