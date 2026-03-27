@@ -412,7 +412,7 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
               <th class="right">Anthony Estimate</th>
               <th class="right">Anticipated</th>
               <th class="right">Actual Spent</th>
-              <th class="right">vs Marcus</th>
+              <th class="right" style="min-width:100px">vs Marcus</th>
               <th class="right">vs Anthony</th>
               <th class="right">vs Anticipated</th>
               <th>% to Anticipated</th>
@@ -1168,7 +1168,7 @@ function renderBudget(){
       </td>
       <td class="right money">${fmt(b.marcus)}</td><td class="right money">${fmt(b.anthony)}</td>
       <td class="right money">${fmt(b.anticipated)}</td><td class="right money">${fmt(actual)}</td>
-      <td class="right"><span class="${vC(varM)}">${actual>0?vS(varM)+fmt(varM):'—'}</span></td>
+      <td class="right" style="min-width:100px;white-space:nowrap"><span class="${vC(varM)}">${actual>0?vS(varM)+fmt(varM):'—'}</span></td>
       <td class="right"><span class="${vC(varA)}">${actual>0?vS(varA)+fmt(varA):'—'}</span></td>
       <td class="right"><span class="${vC(varAnt)}">${actual>0?vS(varAnt)+fmt(varAnt):'—'}</span></td>
       <td><div class="miniprog"><div class="miniprog-fill ${pct>100?'over':''}" style="width:${Math.min(100,pct)}%"></div></div><div style="font-size:10px;color:#aaa;margin-top:2px">${pct}%</div></td>
@@ -1183,7 +1183,7 @@ function renderBudget(){
     <tr class="trow">
       <td>TOTAL</td><td class="right">${fmt(totM)}</td><td class="right">${fmt(totA)}</td>
       <td class="right">${fmt(totAnt)}</td><td class="right">${fmt(totAct)}</td>
-      <td class="right"><span class="${vC(vM)}">${totAct>0?vS(vM)+fmt(vM):'—'}</span></td>
+      <td class="right" style="min-width:100px;white-space:nowrap"><span class="${vC(vM)}">${totAct>0?vS(vM)+fmt(vM):'—'}</span></td>
       <td class="right"><span class="${vC(vA)}">${totAct>0?vS(vA)+fmt(vA):'—'}</span></td>
       <td class="right"><span class="${vC(vAnt)}">${totAct>0?vS(vAnt)+fmt(vAnt):'—'}</span></td>
       <td></td><td></td>
@@ -1212,8 +1212,7 @@ function renderSpend(){
 
   const projectSpend=state.spend.filter(x=>!x.trackingOnly);
   const trackingSpend=state.spend.filter(x=>x.trackingOnly===true);
-  const totalCostAll=state.spend.reduce((s,x)=>s+x.cost,0);          // all expenses incl. appliances
-  const projectCost=projectSpend.reduce((s,x)=>s+x.cost,0);          // project only
+  const projectCost=projectSpend.reduce((s,x)=>s+x.cost,0);          // project only (excludes tracking)
   const totalMargin=projectSpend.reduce((s,x)=>x.applyMargin!==false?s+x.cost*0.1:s,0);
   const grandTotal=projectCost+totalMargin;                           // full project spend value
   // Gross Due = what Marcus actually owes Anthony:
@@ -1225,7 +1224,7 @@ function renderSpend(){
   const remaining=grossDue-totalPayments;
 
   document.getElementById('spend-totals').innerHTML=`
-    <div class="st-item"><div class="st-label">Total Cost${appliancesTotal>0?' (incl. appliances)':''}</div><div class="st-val">${fmt2(totalCostAll)}</div></div>
+    <div class="st-item"><div class="st-label">Total Cost</div><div class="st-val">${fmt2(projectCost)}</div></div>
     ${totalMargin>0?`<div class="st-item"><div class="st-label">Total Margin (10%)</div><div class="st-val">${fmt2(totalMargin)}</div></div>`:''}
     <div class="st-item"><div class="st-label">Grand Total</div><div class="st-val">${fmt2(grandTotal)}</div></div>
     <div class="st-item"><div class="st-label">Gross Due to Anthony</div><div class="st-val" style="color:#c0392b;font-weight:800">${fmt2(grossDue)}</div></div>
