@@ -860,7 +860,7 @@ function renderDashboard(){
   const totalBudget=state.budget.reduce((s,b)=>s+b.marcus,0);
   const totalSpent=state.spend.reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+x.cost+m;},0);
   const spentPct=Math.min(100,Math.round(totalSpent/totalBudget*100));
-  const totalDue=state.spend.reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+(x.paidBy==='Marcus'?m:x.cost+m);},0);
+  const totalDue=state.spend.reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+x.cost+m;},0);
   const totalPayments=(state.payments||[]).reduce((s,p)=>s+p.amount,0);
   const balanceRemaining=totalDue-totalPayments;
 
@@ -1192,16 +1192,14 @@ function renderSpend(){
 
   const totalCost=state.spend.reduce((s,x)=>s+x.cost,0);
   const totalMargin=state.spend.reduce((s,x)=>x.applyMargin!==false?s+x.cost*0.1:s,0);
-  const totalDue=state.spend.reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+(x.paidBy==='Marcus'?m:x.cost+m);},0);
+  const grandTotal=totalCost+totalMargin;
   const totalPayments=(state.payments||[]).reduce((s,p)=>s+p.amount,0);
-  const remaining=totalDue-totalPayments;
-  const grandTotal=showMargin?totalCost+totalMargin:totalCost;
+  const remaining=grandTotal-totalPayments;
 
   document.getElementById('spend-totals').innerHTML=`
     <div class="st-item"><div class="st-label">Total Cost</div><div class="st-val">${fmt2(totalCost)}</div></div>
-    ${showMargin?`<div class="st-item"><div class="st-label">Total Margin (10%)</div><div class="st-val">${fmt2(totalMargin)}</div></div>`:''}
-    <div class="st-item"><div class="st-label">${showMargin?'Grand Total':'Raw Total'}</div><div class="st-val">${fmt2(grandTotal)}</div></div>
-    <div class="st-item"><div class="st-label">Gross Due Anthony</div><div class="st-val" style="color:#c0392b">${fmt2(totalDue)}</div></div>
+    ${totalMargin>0?`<div class="st-item"><div class="st-label">Total Margin (10%)</div><div class="st-val">${fmt2(totalMargin)}</div></div>`:''}
+    <div class="st-item"><div class="st-label">Grand Total (Gross Due)</div><div class="st-val" style="color:#c0392b">${fmt2(grandTotal)}</div></div>
     <div class="st-item"><div class="st-label">Payments Made</div><div class="st-val" style="color:#27ae60">− ${fmt2(totalPayments)}</div></div>
     <div class="st-item"><div class="st-label">${remaining<0?'Credit (Overpaid)':remaining===0?'Fully Paid':'Balance Remaining'}</div><div class="st-val" style="color:${remaining<0?'#27ae60':remaining===0?'#888':'#c0392b'}">${remaining<0?'−':''}${fmt2(Math.abs(remaining))}</div></div>
     <div class="st-item"><div class="st-label">Entries</div><div class="st-val">${state.spend.length}</div></div>`;
@@ -1211,7 +1209,7 @@ function renderSpend(){
   if(!state.spend.length){tbody.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
   tbody.innerHTML=state.spend.map((s,i)=>{
-    const hasMargin=s.applyMargin!==false;const margin=hasMargin?s.cost*0.1:0;const total=s.cost+margin;const balDue=s.paidBy==='Marcus'?margin:s.cost+margin;
+    const hasMargin=s.applyMargin!==false;const margin=hasMargin?s.cost*0.1:0;const total=s.cost+margin;const balDue=total;
     const editCount=s.editHistory?.length||0;
     return `<tr>
       <td style="color:#aaa;font-size:11px">${i+1}</td>
@@ -1496,10 +1494,10 @@ function renderPayments(){
   if(dateInput&&!dateInput.value) dateInput.value=today().toISOString().split('T')[0];
   const payments=state.payments||[];
   const totalPaid=payments.reduce((s,p)=>s+p.amount,0);
-  const totalDue=state.spend.reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+(x.paidBy==='Marcus'?m:x.cost+m);},0);
-  const remaining=totalDue-totalPaid;
+  const grossDue=state.spend.reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+x.cost+m;},0);
+  const remaining=grossDue-totalPaid;
   document.getElementById('pay-totals').innerHTML=`
-    <div class="st-item"><div class="st-label">Gross Due Anthony</div><div class="st-val" style="color:#c0392b">${fmt2(totalDue)}</div></div>
+    <div class="st-item"><div class="st-label">Grand Total (Gross Due)</div><div class="st-val" style="color:#c0392b">${fmt2(grossDue)}</div></div>
     <div class="st-item"><div class="st-label">Total Paid</div><div class="st-val" style="color:#27ae60">${fmt2(totalPaid)}</div></div>
     <div class="st-item"><div class="st-label">${remaining<0?'Credit (Overpaid)':remaining===0?'Fully Paid':'Balance Remaining'}</div><div class="st-val" style="color:${remaining<0?'#27ae60':remaining===0?'#888':'#c0392b'}">${remaining<0?'−':''}${fmt2(Math.abs(remaining))}</div></div>
     <div class="st-item"><div class="st-label">Payments Made</div><div class="st-val">${payments.length}</div></div>`;
