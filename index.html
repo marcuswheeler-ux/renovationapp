@@ -877,7 +877,7 @@ function renderDashboard(){
   const td=today();
   const daysLeft=Math.max(0,daysBetween(td,projectEnd));
   const totalBudget=state.budget.reduce((s,b)=>s+b.marcus,0);
-  const totalSpent=state.spend.filter(x=>!x.trackingOnly).reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+x.cost+m;},0);
+  const totalSpent=state.spend.reduce((s,x)=>{const m=x.trackingOnly?0:x.applyMargin!==false?x.cost*0.1:0;return s+x.cost+m;},0);
   const spentPct=Math.min(100,Math.round(totalSpent/totalBudget*100));
   const totalDue=state.spend.filter(x=>!x.trackingOnly).reduce((s,x)=>{const m=x.applyMargin!==false?x.cost*0.1:0;return s+(x.paidBy==='Marcus'?m:x.cost+m);},0);
   const totalPayments=(state.payments||[]).reduce((s,p)=>s+p.amount,0);
@@ -1211,17 +1211,18 @@ function renderSpend(){
 
   const projectSpend=state.spend.filter(x=>!x.trackingOnly);
   const trackingSpend=state.spend.filter(x=>x.trackingOnly===true);
-  const totalCost=projectSpend.reduce((s,x)=>s+x.cost,0);
+  const totalCostAll=state.spend.reduce((s,x)=>s+x.cost,0);          // all expenses incl. appliances
+  const projectCost=projectSpend.reduce((s,x)=>s+x.cost,0);          // project only
   const totalMargin=projectSpend.reduce((s,x)=>x.applyMargin!==false?s+x.cost*0.1:s,0);
-  const grandTotal=totalCost+totalMargin;
+  const grossDue=projectCost+totalMargin;                              // what Marcus owes Anthony
   const appliancesTotal=trackingSpend.reduce((s,x)=>s+x.cost,0);
   const totalPayments=(state.payments||[]).reduce((s,p)=>s+p.amount,0);
-  const remaining=grandTotal-totalPayments;
+  const remaining=grossDue-totalPayments;
 
   document.getElementById('spend-totals').innerHTML=`
-    <div class="st-item"><div class="st-label">Total Cost</div><div class="st-val">${fmt2(totalCost)}</div></div>
+    <div class="st-item"><div class="st-label">Total Cost${appliancesTotal>0?' (incl. appliances)':''}</div><div class="st-val">${fmt2(totalCostAll)}</div></div>
     ${totalMargin>0?`<div class="st-item"><div class="st-label">Total Margin (10%)</div><div class="st-val">${fmt2(totalMargin)}</div></div>`:''}
-    <div class="st-item"><div class="st-label">Grand Total (Gross Due)</div><div class="st-val" style="color:#c0392b">${fmt2(grandTotal)}</div></div>
+    <div class="st-item"><div class="st-label">Grand Total (Gross Due)</div><div class="st-val" style="color:#c0392b">${fmt2(grossDue)}</div></div>
     <div class="st-item"><div class="st-label">Payments Made</div><div class="st-val" style="color:#27ae60">− ${fmt2(totalPayments)}</div></div>
     <div class="st-item"><div class="st-label">${remaining<0?'Credit (Overpaid)':remaining===0?'Fully Paid':'Balance Remaining'}</div><div class="st-val" style="color:${remaining<0?'#27ae60':remaining===0?'#888':'#c0392b'}">${remaining<0?'−':''}${fmt2(Math.abs(remaining))}</div></div>
     <div class="st-item"><div class="st-label">Entries</div><div class="st-val">${projectSpend.length}${trackingSpend.length>0?` + ${trackingSpend.length} tracking`:''}</div></div>`;
