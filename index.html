@@ -207,6 +207,9 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
 .icon-btn:hover{background:#f0f0f0;color:#444}
 .icon-btn.has-receipt{color:#27ae60}
 .icon-btn.has-history{color:#9b59b6;font-size:11px;font-weight:800}
+.icon-btn.is-paid{color:#27ae60;font-weight:800}
+.spend-table tr.row-paid td{background:#f0faf4;color:#555}
+.spend-table tr.row-paid td.money{color:#888!important}
 /* Edit / History / Receipt modals */
 .emodal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:7000;backdrop-filter:blur(3px)}
 .emodal-bg.hidden{display:none}
@@ -1210,8 +1213,9 @@ function renderSpend(){
   empty.style.display='none';
   tbody.innerHTML=state.spend.map((s,i)=>{
     const hasMargin=s.applyMargin!==false;const margin=hasMargin?s.cost*0.1:0;const total=s.cost+margin;const balDue=total;
+    const isPaid=s.isPaid===true;
     const editCount=s.editHistory?.length||0;
-    return `<tr>
+    return `<tr class="${isPaid?'row-paid':''}">
       <td style="color:#aaa;font-size:11px">${i+1}</td>
       <td style="font-size:12px;white-space:nowrap">${s.date||'—'}</td>
       <td><span style="font-weight:600">${s.category}</span></td>
@@ -1220,10 +1224,11 @@ function renderSpend(){
       <td class="right money margin-col" style="color:${hasMargin?'#888':'#bbb'};${showMargin?'':'display:none'}">${hasMargin?fmt2(margin):'—'}</td>
       <td class="right money" style="font-weight:700">${fmt2(total)}</td>
       <td><span class="paid-tag paid-${s.paidBy}">${s.paidBy}</span></td>
-      <td class="right money" style="color:#c0392b;font-weight:700">${fmt2(balDue)}</td>
+      <td class="right money" style="color:${isPaid?'#27ae60':'#c0392b'};font-weight:700">${isPaid?'✓ Paid':fmt2(balDue)}</td>
       <td style="font-size:11px;color:#aaa">${s.ref||'—'}</td>
       <td><span class="paid-tag paid-${(s.addedBy||'').replace(/ /g,'')}" style="font-size:10px">${s.addedBy||'—'}</span></td>
       <td style="white-space:nowrap">
+        <button class="icon-btn ${isPaid?'is-paid':''}" onclick="toggleExpensePaid(${s.id})" title="${isPaid?'Mark unpaid':'Mark paid'}">✓</button>
         <button class="icon-btn" onclick="openEditModal(${s.id})" title="Edit expense">✏️</button>
         <button class="icon-btn ${s.hasReceipt?'has-receipt':''}" onclick="${s.hasReceipt?`viewReceipt(${s.id})`:`toast('No receipt attached yet','#888')`}" title="${s.hasReceipt?'View receipt':'No receipt'}">🧾</button>
         ${editCount>0?`<button class="icon-btn has-history" onclick="viewHistory(${s.id})" title="${editCount} edit${editCount>1?'s':''}">${editCount}✎</button>`:''}
@@ -1237,6 +1242,15 @@ window.toggleMargin=function(){
   const toggleEl=document.getElementById('margin-toggle');
   showMargin=toggleEl?toggleEl.checked:showMargin;
   renderSpend();
+}
+
+window.toggleExpensePaid=function(id){
+  const s=state.spend.find(x=>x.id===id);
+  if(!s) return;
+  s.isPaid=!s.isPaid;
+  addActivity(`Marked expense #${id} (${s.category}) as ${s.isPaid?'paid':'unpaid'}`);
+  saveState(); renderSpend(); renderDashboard();
+  toast(s.isPaid?`✓ Expense marked paid`:`Expense marked unpaid`, s.isPaid?'#27ae60':'#e67e22');
 }
 
 window.addSpend=async function(){
