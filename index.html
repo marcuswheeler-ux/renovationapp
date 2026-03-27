@@ -415,7 +415,7 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
               <th class="right">vs Marcus</th>
               <th class="right">vs Anthony</th>
               <th class="right">vs Anticipated</th>
-              <th>Progress</th>
+              <th>% to Anticipated</th>
               <th>Notes</th>
             </tr>
           </thead>
@@ -923,11 +923,11 @@ function renderDashboard(){
   const topCats=state.budget.slice(0,6);
   document.getElementById('dash-budget').innerHTML=topCats.map(b=>{
     const actual=getActualByCategory(b.category);
-    const pct=Math.min(100,Math.round(actual/b.anthony*100));
+    const pct=b.anticipated>0?Math.min(100,Math.round(actual/b.anticipated*100)):0;
     return `<div class="budget-summary-row">
       <div style="color:#444;font-weight:500">${b.category}</div>
       <div style="flex:1;margin:0 12px"><div class="progress-bar"><div class="progress-fill ${pct>100?'fill-red':'fill-blue'}" style="width:${pct}%"></div></div></div>
-      <div style="text-align:right"><div class="bval">${fmt(actual)}</div><div class="bpct">of ${fmt(b.anthony)}</div></div>
+      <div style="text-align:right"><div class="bval">${fmt(actual)}</div><div class="bpct">${pct}% of ${fmt(b.anticipated)}</div></div>
     </div>`;
   }).join('');
 
@@ -1155,7 +1155,7 @@ function renderBudget(){
   const rows=state.budget.map(b=>{
     const actual=getActualByCategory(b.category);
     const varM=actual-b.marcus,varA=actual-b.anthony,varAnt=actual-b.anticipated;
-    const pct=b.marcus>0?Math.min(120,Math.round(actual/b.marcus*100)):0;
+    const pct=b.anticipated>0?Math.min(120,Math.round(actual/b.anticipated*100)):0;
     totM+=b.marcus;totA+=b.anthony;totAnt+=b.anticipated;totAct+=actual;
     const vC=(v)=>v<0?'var-pos':v>0?'var-neg':'var-zero';
     const vS=(v)=>v<0?'▼ ':v>0?'▲ ':'';
