@@ -333,6 +333,20 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
 .actual-section{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 14px;margin-top:10px}
 .actual-section-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:#16A34A;margin-bottom:10px}
 
+/* Audit log */
+.audit-table{width:100%;border-collapse:collapse;font-size:12px}
+.audit-table th{background:#f8f9fb;padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:#999;font-weight:800;border-bottom:2px solid #e8eaed;white-space:nowrap}
+.audit-table td{padding:9px 12px;border-bottom:1px solid #f5f5f5;vertical-align:middle}
+.audit-table tr:hover td{background:#fafbfc}
+.audit-ts{font-size:11px;color:var(--ciq-slate);white-space:nowrap;font-family:'Inter',sans-serif}
+.audit-ts strong{display:block;font-size:12px;color:var(--ciq-charcoal);font-weight:700}
+.audit-action{color:var(--ciq-charcoal);max-width:280px}
+.audit-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap}
+.audit-chip.mobile{background:var(--ciq-ice);color:var(--ciq-navy)}
+.audit-chip.desktop{background:#f0fdf4;color:#15803d}
+.audit-loc{font-size:11px;color:var(--ciq-slate)}
+.audit-na{color:#ddd;font-size:11px}
+
 /* Logo */
 .ciq-logo{display:block;height:32px;width:auto}
 .ciq-logo-lg{display:block;height:52px;width:auto}
@@ -406,6 +420,7 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
   <div class="tab" onclick="switchTab('budget',this)">💰 Budget</div>
   <div class="tab" onclick="switchTab('spend',this)">🧾 Spend Log</div>
   <div class="tab" onclick="switchTab('payments',this)">💸 Payments</div>
+  <div class="tab" onclick="switchTab('auditlog',this)">🔍 Activity Log</div>
 </div>
 
 <!-- CONTENT -->
@@ -622,6 +637,41 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
     </div>
   </div>
 
+  <!-- ACTIVITY LOG -->
+  <div id="tab-auditlog" class="tab-content">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <div class="section-title" style="margin-bottom:0">Full Audit Log</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div class="filter-bar" style="margin:0">
+            <button class="filter-btn active" onclick="filterAudit('all',this)">All</button>
+            <button class="filter-btn" onclick="filterAudit('Marcus',this)">👤 Marcus</button>
+            <button class="filter-btn" onclick="filterAudit('Anthony',this)">🔨 Anthony</button>
+          </div>
+          <button class="btn btn-sm" style="background:var(--ciq-ice);color:var(--ciq-navy);border:1.5px solid var(--ciq-steel)" onclick="exportAuditCSV()">⬇ Export CSV</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="audit-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>User</th>
+              <th>Action</th>
+              <th>Browser</th>
+              <th>OS</th>
+              <th>Device</th>
+              <th>Location</th>
+              <th>Timezone</th>
+            </tr>
+          </thead>
+          <tbody id="audit-tbody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="audit-empty" style="display:none"><p>No activity recorded yet.</p></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- EDIT EXPENSE MODAL -->
@@ -810,6 +860,138 @@ let currentUser = localStorage.getItem('reno_user') || '';
 let isRemoteUpdate = false;
 let saveTimer = null;
 let showMargin = true;
+let currentSession = null; // enriched session info attached to activity entries
+let auditFilter = 'all';
+
+// ============================================================
+// SESSION / DEVICE / LOCATION CAPTURE
+// ============================================================
+function parseUserAgent(ua){
+  const browser =
+    /Edg\/(\d+)/.exec(ua)    ? `Edge ${/Edg\/(\d+)/.exec(ua)[1]}`    :
+    /OPR\/(\d+)/.exec(ua)    ? `Opera ${/OPR\/(\d+)/.exec(ua)[1]}`   :
+    /Chrome\/(\d+)/.exec(ua) ? `Chrome ${/Chrome\/(\d+)/.exec(ua)[1]}`:
+    /Firefox\/(\d+)/.exec(ua)? `Firefox ${/Firefox\/(\d+)/.exec(ua)[1]}`:
+    /Safari\//.test(ua) && !/Chrome/.test(ua) ?
+      `Safari${/Version\/(\d+)/.exec(ua)?` ${/Version\/(\d+)/.exec(ua)[1]}`:''}` :
+    'Browser';
+  const os =
+    /iPhone/.test(ua)  ? 'iOS' :
+    /iPad/.test(ua)    ? 'iPadOS' :
+    /Android ([\d.]+)/.exec(ua) ? `Android ${/Android ([\d.]+)/.exec(ua)[1]}` :
+    /Windows NT 10/.test(ua)    ? 'Windows 11' :
+    /Windows NT/.test(ua)       ? 'Windows' :
+    /Mac OS X ([\d_]+)/.exec(ua)? `macOS ${/Mac OS X ([\d_]+)/.exec(ua)[1].replace(/_/g,'.')}` :
+    /Linux/.test(ua)            ? 'Linux' : 'Unknown OS';
+  const mobile = /iPhone|iPad|Android|Mobile/.test(ua);
+  const model =
+    /iPhone/.test(ua) ? 'iPhone' :
+    /iPad/.test(ua)   ? 'iPad'   :
+    (/Android/.test(ua) && /;\s([^)]+)\)/.exec(ua)?.[1]) ? /;\s([^)]+)\)/.exec(ua)[1].trim() : null;
+  return {browser, os, mobile, model};
+}
+
+async function buildSession(){
+  const ua = parseUserAgent(navigator.userAgent);
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const screen = `${window.screen.width}×${window.screen.height}`;
+  const device = ua.model || (ua.mobile ? 'Mobile' : 'Desktop');
+  let city='', region='', country='';
+  try{
+    const r = await fetch('https://ipapi.co/json/',{signal:AbortSignal.timeout(4000)});
+    if(r.ok){ const d=await r.json(); city=d.city||''; region=d.region_code||''; country=d.country_code||''; }
+  }catch(_){}
+  return {browser:ua.browser, os:ua.os, mobile:ua.mobile, device, tz, screen, city, region, country};
+}
+
+async function initSession(userName){
+  currentSession = await buildSession();
+  currentSession.user = userName;
+  currentSession.loginAt = new Date().toISOString();
+  addActivity(`Logged in`);
+}
+
+// ============================================================
+// ACTIVITY LOG RENDER
+// ============================================================
+function renderAuditLog(){
+  const tbody = document.getElementById('audit-tbody');
+  const empty = document.getElementById('audit-empty');
+  if(!tbody) return;
+  const entries = (state.activity||[]).filter(e=>
+    auditFilter==='all' || e.user===auditFilter
+  );
+  if(!entries.length){
+    tbody.innerHTML='';
+    if(empty) empty.style.display='block';
+    return;
+  }
+  if(empty) empty.style.display='none';
+
+  tbody.innerHTML = entries.map(e=>{
+    const d = new Date(e.at);
+    const dateStr = d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const timeStr = d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+    const userColor = e.user==='Marcus'?'var(--ciq-navy)':'#d68910';
+    const userBg   = e.user==='Marcus'?'var(--ciq-ice)':'#fef9e7';
+    const deviceChip = e.device
+      ? `<span class="audit-chip ${e.mobile?'mobile':'desktop'}">${e.mobile?'📱':'🖥'} ${e.device}</span>`
+      : `<span class="audit-na">—</span>`;
+    const locParts = [e.city, e.region, e.country].filter(Boolean);
+    const locStr   = locParts.length ? locParts.join(', ') : '';
+    const locHtml  = locStr
+      ? `<div>${locStr}</div>`
+      : `<span class="audit-na">—</span>`;
+    const tzHtml   = e.tz
+      ? `<div class="audit-loc">${e.tz.replace('_',' ')}</div>`
+      : `<span class="audit-na">—</span>`;
+    return `<tr>
+      <td><div class="audit-ts"><strong>${timeStr}</strong>${dateStr}</div></td>
+      <td><span class="audit-chip" style="background:${userBg};color:${userColor}">${e.user==='Marcus'?'👤':'🔨'} ${e.user||'—'}</span></td>
+      <td style="max-width:280px;font-size:12px">${e.action||'—'}</td>
+      <td>${e.browser?`<span style="font-size:12px">${e.browser}</span>`:'<span class="audit-na">—</span>'}</td>
+      <td>${e.os?`<div class="audit-loc">${e.os}</div>`:'<span class="audit-na">—</span>'}</td>
+      <td>${deviceChip}</td>
+      <td>${locHtml}</td>
+      <td>${tzHtml}</td>
+    </tr>`;
+  }).join('');
+}
+
+window.filterAudit = function(type, btn){
+  auditFilter = type;
+  document.querySelectorAll('.filter-bar .filter-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderAuditLog();
+};
+
+window.exportAuditCSV = function(){
+  const entries = (state.activity||[]).filter(e=>
+    auditFilter==='all' || e.user===auditFilter
+  );
+  const headers = ['Timestamp','User','Action','Browser','OS','Device','Mobile','City','Region','Country','Timezone'];
+  const rows = entries.map(e=>[
+    new Date(e.at).toLocaleString('en-US'),
+    e.user||'',
+    (e.action||'').replace(/,/g,' '),
+    e.browser||'',
+    e.os||'',
+    e.device||'',
+    e.mobile?'Yes':'No',
+    e.city||'',
+    e.region||'',
+    e.country||'',
+    e.tz||''
+  ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `activity-log-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
 
 // ============================================================
 // HELPERS
@@ -854,8 +1036,21 @@ function setSyncStatus(status){
 
 function addActivity(action){
   if(!state.activity) state.activity=[];
-  state.activity.unshift({user:currentUser,action,at:new Date().toISOString()});
-  if(state.activity.length>20) state.activity=state.activity.slice(0,20);
+  const entry = {
+    user: currentUser,
+    action,
+    at: new Date().toISOString(),
+    browser: currentSession?.browser||'',
+    os:      currentSession?.os||'',
+    device:  currentSession?.device||'',
+    mobile:  currentSession?.mobile||false,
+    tz:      currentSession?.tz||'',
+    city:    currentSession?.city||'',
+    region:  currentSession?.region||'',
+    country: currentSession?.country||''
+  };
+  state.activity.unshift(entry);
+  if(state.activity.length>500) state.activity=state.activity.slice(0,500);
 }
 
 // ============================================================
@@ -900,6 +1095,7 @@ window.switchTab = function(tab, el){
   if(tab==='budget') renderBudget();
   if(tab==='spend') renderSpend();
   if(tab==='payments') renderPayments();
+  if(tab==='auditlog') renderAuditLog();
 }
 
 function renderAll(){
@@ -911,19 +1107,21 @@ function renderAll(){
   else if(id==='budget') renderBudget();
   else if(id==='spend') renderSpend();
   else if(id==='payments') renderPayments();
+  else if(id==='auditlog') renderAuditLog();
   renderDashboard(); // always keep dashboard fresh
 }
 
 // ============================================================
 // USER
 // ============================================================
-window.setUser = function(name){
+window.setUser = async function(name){
   currentUser = name;
   localStorage.setItem('reno_user', name);
   document.getElementById('user-modal').classList.add('hidden');
   const badge = document.getElementById('user-badge');
   badge.style.display='inline-flex';
   badge.textContent = (name==='Marcus'?'👤 ':'🔨 ')+name;
+  await initSession(name);
   renderAll();
 }
 
