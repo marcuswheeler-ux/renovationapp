@@ -173,6 +173,10 @@ textarea.notes-field:focus{outline:none;border-color:#3498db}
 .budget-table tr:hover td{background:#fafbfc}
 .budget-table .trow td{font-weight:900;border-top:2px solid #e8eaed;background:#f8f9fb;color:#1e3a5f}
 .cat-name{font-weight:700;color:#2c3e50}
+.budget-cat-cell{display:flex;align-items:center;gap:6px}
+.budget-edit-btn{background:none;border:none;cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;opacity:0;transition:opacity .15s,background .15s;flex-shrink:0;line-height:1}
+.budget-edit-btn:hover{background:#eef2f7}
+.budget-table tr:hover .budget-edit-btn{opacity:1}
 .note-tag{font-size:10px;color:#aaa;font-style:italic;margin-left:4px}
 .money{font-variant-numeric:tabular-nums;font-weight:600}
 .var-pos{color:#27ae60;font-weight:700}
@@ -413,7 +417,7 @@ input:checked+.toggle-slider:before{transform:translateX(20px)}
   <div id="tab-budget" class="tab-content">
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div class="section-title" style="margin-bottom:0">Budget Overview — 10% margin applied to Anthony's cost &nbsp;<span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb;font-size:10px">Click ✏️ on any row to edit</span></div>
+        <div class="section-title" style="margin-bottom:0">Budget Overview — 10% margin applied to Anthony's cost &nbsp;<span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb;font-size:10px">Hover any row to edit</span></div>
         <button class="btn btn-green btn-sm" onclick="openAddBudgetRow()">+ Add Category</button>
       </div>
       <div style="overflow-x:auto">
@@ -1178,9 +1182,11 @@ function renderBudget(){
     const catEsc=b.category.replace(/'/g,"\\'");
     return `<tr>
       <td>
-        <span class="cat-name">${b.category}</span>
-        ${b.notes?`<span class="note-tag">${b.notes}</span>`:''}
-        <button class="icon-btn" style="margin-left:4px;font-size:12px" onclick="openBudgetEdit('${catEsc}')" title="Edit budget">✏️</button>
+        <div class="budget-cat-cell">
+          <button class="budget-edit-btn" onclick="openBudgetEdit('${catEsc}')" title="Edit budget">✏️</button>
+          <span class="cat-name">${b.category}</span>
+          ${b.notes?`<span class="note-tag">${b.notes}</span>`:''}
+        </div>
       </td>
       <td class="right money">${fmt(b.marcus)}</td><td class="right money">${fmt(b.anthony)}</td>
       <td class="right money">${fmt(b.anticipated)}</td><td class="right money">${fmt(actual)}</td>
