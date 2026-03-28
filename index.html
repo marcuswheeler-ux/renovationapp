@@ -1212,7 +1212,7 @@ function renderDashboard(){
     </div>`;
   }).join('');
 
-  const activity=(state.activity||[]).slice(0,8);
+  const activity=(state.activity||[]).filter(a=>!/^Viewed |^Logged in/.test(a.action||'')).slice(0,8);
   document.getElementById('dash-activity').innerHTML=activity.length?activity.map(a=>`
     <div class="activity-item">
       <span class="activity-who ${(a.user||'').toLowerCase()}">${a.user||'?'}</span>
