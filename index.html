@@ -909,6 +909,7 @@ async function initSession(userName){
   currentSession.user = userName;
   currentSession.loginAt = new Date().toISOString();
   addActivity(`Logged in`);
+  saveState();
 }
 
 // ============================================================
