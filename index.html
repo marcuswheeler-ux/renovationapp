@@ -1085,6 +1085,16 @@ function saveState(){
 // ============================================================
 // TABS
 // ============================================================
+const TAB_LABELS = {
+  dashboard:'Dashboard',
+  tasks:'Tasks',
+  gantt:'Timeline',
+  budget:'Budget',
+  spend:'Spend Log',
+  payments:'Payments',
+  auditlog:'Activity Log'
+};
+
 window.switchTab = function(tab, el){
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -1097,6 +1107,10 @@ window.switchTab = function(tab, el){
   if(tab==='spend') renderSpend();
   if(tab==='payments') renderPayments();
   if(tab==='auditlog') renderAuditLog();
+  if(currentUser){
+    addActivity(`Viewed ${TAB_LABELS[tab]||tab}`);
+    saveState();
+  }
 }
 
 function renderAll(){
